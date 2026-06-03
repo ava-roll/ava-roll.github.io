@@ -7,6 +7,7 @@ import { Dice6, Trophy, ImageIcon } from 'lucide-react';
 import { GameBoard } from './GameBoard';
 import { ImageStack } from './ImageStack';
 import { useToast } from '@/hooks/use-toast';
+import { sounds } from '@/lib/sounds';
 
 // Import sample GIFs
 import celebration1 from '@/assets/gifs/player1/celebration1.jpg';
