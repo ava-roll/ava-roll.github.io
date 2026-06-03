@@ -261,7 +261,7 @@ export const BoardGame: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowImageStack(1)}
+                onClick={() => { sounds.click(); setShowImageStack(1); }}
                 className="flex items-center gap-2"
               >
                 <ImageIcon className="h-4 w-4" />
@@ -270,7 +270,7 @@ export const BoardGame: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowImageStack(2)}
+                onClick={() => { sounds.click(); setShowImageStack(2); }}
                 className="flex items-center gap-2"
               >
                 <ImageIcon className="h-4 w-4" />
