@@ -84,8 +84,9 @@ export const BoardGame: React.FC = () => {
   const rollDice = () => {
     if (gameState.isRolling || gameState.isMoving || gameState.gameWinner) return;
 
+    sounds.diceRoll();
     setGameState(prev => ({ ...prev, isRolling: true }));
-    
+
     // Simulate dice animation
     setTimeout(() => {
       const diceValue = Math.floor(Math.random() * 6) + 1;
