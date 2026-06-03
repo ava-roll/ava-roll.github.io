@@ -139,9 +139,10 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'dice-roll': 'dice-roll 0.8s ease-in-out',
 				'token-hop': 'token-hop 0.4s ease-in-out',
-				'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+				'glow-pulse': 'glow-pulse 1.2s ease-in-out infinite',
 				'slide-up': 'slide-up 0.3s ease-out',
-				'fade-scale': 'fade-scale 0.3s ease-out'
+				'fade-scale': 'fade-scale 0.3s ease-out',
+				'char-bounce': 'token-hop 0.7s ease-in-out infinite'
 			}
 		}
 	},
