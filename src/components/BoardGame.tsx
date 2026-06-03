@@ -324,7 +324,7 @@ export const BoardGame: React.FC = () => {
                     Congratulations on reaching the finish line!
                   </p>
                 </div>
-                <Button onClick={resetGame} className="text-lg px-8 py-4">
+                <Button onClick={() => { sounds.click(); resetGame(); }} className="text-lg px-8 py-4">
                   Play Again
                 </Button>
               </div>
