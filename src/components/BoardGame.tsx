@@ -343,7 +343,7 @@ export const BoardGame: React.FC = () => {
 
       {/* Dice Roll Modal */}
       <Dialog open={showDiceModal} onOpenChange={(open) => { if (!open && diceSettled) confirmDice(); }}>
-        <DialogContent className="max-w-md flex flex-col items-center justify-center gap-6 py-10">
+        <DialogContent hideCloseButton className="max-w-md flex flex-col items-center justify-center gap-6 py-10">
           <h2 className="text-2xl font-bold">
             {diceSettled ? `You rolled ${pendingDice}!` : 'Rolling...'}
           </h2>
@@ -365,8 +365,11 @@ export const BoardGame: React.FC = () => {
 
       {/* GIF Reveal Modal */}
       <Dialog open={showGIFModal} onOpenChange={setShowGIFModal}>
-        <DialogContent className="max-w-2xl w-[70vw] h-[70vh] p-0">
-          <div className="flex items-center justify-center h-full">
+        <DialogContent hideCloseButton className="max-w-2xl w-[70vw] h-[70vh] p-0">
+          <div
+            className="flex items-center justify-center h-full cursor-pointer"
+            onClick={() => setShowGIFModal(false)}
+          >
             <img
               src={currentGIF}
               alt="Revealed GIF"
