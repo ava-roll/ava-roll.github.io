@@ -117,11 +117,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
         const a = cellRect(String(from));
         const b = cellRect(String(to));
         if (!a || !b) return;
-        // Start near top edge of source, end at top-left corner of destination
+        // End slightly above the cell center so the arrowhead doesn't cover the number label
         const startX = a.x;
-        const startY = a.top + 4;
-        const endX = b.left + 4;
-        const endY = b.top + 4;
+        const startY = a.y - a.h * 0.25;
+        const endX = b.x;
+        const endY = b.y - b.h * 0.28;
         const midX = (startX + endX) / 2;
         const lift = Math.max(40, Math.abs(endX - startX) * 0.25);
         const minY = Math.min(startY, endY);
