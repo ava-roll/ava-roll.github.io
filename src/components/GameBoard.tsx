@@ -84,11 +84,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
     const c = cellRect(key);
     if (!c) return null;
     const offset = sideOffset * (c.w * 0.22);
+    const pad = c.w * 0.08;
     return {
-      left: c.left + offset,
-      top: c.top,
-      width: c.w,
-      height: c.h,
+      left: c.left + offset + pad,
+      top: c.top + pad,
+      width: c.w - pad * 2,
+      height: c.h - pad * 2,
       opacity: 1,
     };
   };
