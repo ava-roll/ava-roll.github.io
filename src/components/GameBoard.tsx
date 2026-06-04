@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import { Crown } from 'lucide-react';
+import { Crown, Flag, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameState } from './BoardGame';
 import playerMale from '@/assets/player-male.png';
@@ -24,9 +24,19 @@ type ArrowPath = {
   d: string;
 };
 
+// Layout: 9 columns x 4 rows = 36 slots. 32 playing cells + START + FINISH + 2 spacers.
+// Entries: number = play cell, 'START' | 'FINISH' = special, null = empty spacer.
+type Slot = number | 'START' | 'FINISH' | null;
+const LAYOUT: Slot[][] = [
+  ['START', 1, 2, 3, 4, 5, 6, 7, 8],
+  [null, 9, 10, 11, 12, 13, 14, 15, 16],
+  [17, 18, 19, 20, 21, 22, 23, 24, null],
+  [25, 26, 27, 28, 29, 30, 31, 32, 'FINISH'],
+];
+
 export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const cellRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const cellRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [p1Style, setP1Style] = useState<TokenStyle | null>(null);
   const [p2Style, setP2Style] = useState<TokenStyle | null>(null);
   const [arrows, setArrows] = useState<ArrowPath[]>([]);
@@ -40,10 +50,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
 
   const hasShortcut = (cellNumber: number) => shortcuts[cellNumber] !== undefined;
 
-  const cellCenter = (pos: number) => {
+  const slotKey = (pos: number, winner: boolean) => {
+    if (winner) return 'FINISH';
+    if (pos <= 0) return 'START';
+    return String(pos);
+  };
+
+  const cellRect = (key: string) => {
     const cont = containerRef.current;
     if (!cont) return null;
-    const el = cellRefs.current[pos - 1];
+    const el = cellRefs.current[key];
     if (!el) return null;
     const cRect = cont.getBoundingClientRect();
     const r = el.getBoundingClientRect();
@@ -54,26 +70,41 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
       h: r.height,
       left: r.left - cRect.left,
       top: r.top - cRect.top,
+      right: r.left - cRect.left + r.width,
+      bottom: r.top - cRect.top + r.height,
     };
   };
 
-  const computeStyle = (pos: number): TokenStyle | null => {
-    const cont = containerRef.current;
-    if (!cont) return null;
-    if (pos < 1) {
-      const c = cellCenter(1);
-      if (!c) return null;
-      return { left: c.left, top: c.top, width: c.w, height: c.h, opacity: 0 };
-    }
-    const c = cellCenter(pos);
+  const computeStyle = (
+    pos: number,
+    winner: boolean,
+    sideOffset: number // -1 left, 0 center, 1 right
+  ): TokenStyle | null => {
+    const key = slotKey(pos, winner);
+    const c = cellRect(key);
     if (!c) return null;
-    return { left: c.left, top: c.top, width: c.w, height: c.h, opacity: 1 };
+    const offset = sideOffset * (c.w * 0.22);
+    return {
+      left: c.left + offset,
+      top: c.top,
+      width: c.w,
+      height: c.h,
+      opacity: 1,
+    };
   };
 
   useLayoutEffect(() => {
     const update = () => {
-      setP1Style(computeStyle(gameState.player1Position));
-      setP2Style(computeStyle(gameState.player2Position));
+      const p1Pos = gameState.player1Position;
+      const p2Pos = gameState.player2Position;
+      const p1Win = gameState.gameWinner === 1;
+      const p2Win = gameState.gameWinner === 2;
+      const p1Key = slotKey(p1Pos, p1Win);
+      const p2Key = slotKey(p2Pos, p2Win);
+      const sameSlot = p1Key === p2Key;
+
+      setP1Style(computeStyle(p1Pos, p1Win, sameSlot ? -1 : 0));
+      setP2Style(computeStyle(p2Pos, p2Win, sameSlot ? 1 : 0));
 
       const cont = containerRef.current;
       if (cont) {
@@ -83,15 +114,19 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
       const newArrows: ArrowPath[] = [];
       Object.entries(shortcuts).forEach(([fromStr, to]) => {
         const from = Number(fromStr);
-        const a = cellCenter(from);
-        const b = cellCenter(to);
+        const a = cellRect(String(from));
+        const b = cellRect(String(to));
         if (!a || !b) return;
-        // Curve control point: arch upward above the cells
-        const midX = (a.x + b.x) / 2;
-        const lift = Math.max(40, Math.abs(b.x - a.x) * 0.25);
-        const minY = Math.min(a.y, b.y);
+        // Start near top edge of source, end at top-left corner of destination
+        const startX = a.x;
+        const startY = a.top + 4;
+        const endX = b.left + 4;
+        const endY = b.top + 4;
+        const midX = (startX + endX) / 2;
+        const lift = Math.max(40, Math.abs(endX - startX) * 0.25);
+        const minY = Math.min(startY, endY);
         const ctrlY = minY - lift;
-        const d = `M ${a.x} ${a.y} Q ${midX} ${ctrlY} ${b.x} ${b.y}`;
+        const d = `M ${startX} ${startY} Q ${midX} ${ctrlY} ${endX} ${endY}`;
         newArrows.push({ from, to, d });
       });
       setArrows(newArrows);
@@ -99,9 +134,43 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, [gameState.player1Position, gameState.player2Position, shortcuts]);
+  }, [
+    gameState.player1Position,
+    gameState.player2Position,
+    gameState.gameWinner,
+    shortcuts,
+  ]);
 
-  const renderCell = (cellNumber: number) => {
+  const renderCell = (slot: Slot) => {
+    if (slot === null) {
+      return <div className="aspect-square" />;
+    }
+
+    if (slot === 'START' || slot === 'FINISH') {
+      const isStart = slot === 'START';
+      return (
+        <div
+          ref={(el) => (cellRefs.current[slot] = el)}
+          className={cn(
+            'relative aspect-square rounded-lg border-2 flex flex-col items-center justify-center text-center p-2 transition-all duration-300',
+            isStart
+              ? 'bg-emerald-600/80 border-emerald-300'
+              : 'bg-amber-500/80 border-amber-300 ring-2 ring-yellow-300/70'
+          )}
+        >
+          {isStart ? (
+            <Play className="h-6 w-6 text-white mb-1" fill="currentColor" />
+          ) : (
+            <Flag className="h-6 w-6 text-white mb-1" fill="currentColor" />
+          )}
+          <div className="text-[10px] font-bold text-white tracking-wider">
+            {slot}
+          </div>
+        </div>
+      );
+    }
+
+    const cellNumber = slot;
     const isShortcut = hasShortcut(cellNumber);
     const isCurrentP1 =
       gameState.currentPlayer === 1 && gameState.player1Position === cellNumber;
@@ -111,8 +180,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
 
     return (
       <div
-        key={cellNumber}
-        ref={(el) => (cellRefs.current[cellNumber - 1] = el)}
+        ref={(el) => (cellRefs.current[String(cellNumber)] = el)}
         className={cn(
           'relative aspect-square rounded-lg border-2 border-border flex flex-col items-center justify-center text-center p-2 transition-all duration-300',
           getZoneClass(cellNumber),
@@ -121,29 +189,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
         )}
       >
         <div className="text-sm font-bold text-white mb-1">{cellNumber}</div>
-
-        {cellNumber === 32 && (
-          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 text-xs font-bold text-yellow-300">
-            🏁 FINISH
-          </div>
-        )}
       </div>
     );
   };
-
-  const rows = [];
-  for (let row = 0; row < 4; row++) {
-    const cells = [];
-    for (let col = 0; col < 8; col++) {
-      const cellNumber = row * 8 + col + 1;
-      if (cellNumber <= 32) cells.push(renderCell(cellNumber));
-    }
-    rows.push(
-      <div key={row} className="grid grid-cols-8 gap-2">
-        {cells}
-      </div>
-    );
-  }
 
   const renderToken = (
     player: 1 | 2,
@@ -181,10 +229,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
             width={128}
             height={128}
             className={cn(
-              'w-[85%] h-[85%] object-contain drop-shadow-lg',
+              'w-[75%] h-[75%] object-contain drop-shadow-lg',
               player === 1
-                ? '-translate-x-1 drop-shadow-[0_4px_6px_hsl(var(--player-1)/0.6)]'
-                : 'translate-x-1 drop-shadow-[0_4px_6px_hsl(var(--player-2)/0.6)]'
+                ? 'drop-shadow-[0_4px_6px_hsl(var(--player-1)/0.6)]'
+                : 'drop-shadow-[0_4px_6px_hsl(var(--player-2)/0.6)]'
             )}
           />
         </div>
@@ -208,7 +256,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
 
       {/* Game Board */}
       <div ref={containerRef} className="relative space-y-2">
-        {rows}
+        {LAYOUT.map((row, ri) => (
+          <div key={ri} className="grid grid-cols-9 gap-2">
+            {row.map((slot, ci) => (
+              <React.Fragment key={ci}>{renderCell(slot)}</React.Fragment>
+            ))}
+          </div>
+        ))}
 
         {/* Shortcut arrows overlay */}
         {svgSize.w > 0 && (
