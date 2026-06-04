@@ -238,10 +238,7 @@ export const BoardGame: React.FC = () => {
 
   useEffect(() => {
     if (!showGIFModal && gameState.diceValue && !gameState.isMoving && !gameState.gameWinner) {
-      const timer = setTimeout(() => {
-        nextTurn();
-      }, 1000);
-      return () => clearTimeout(timer);
+      nextTurn();
     }
   }, [showGIFModal, gameState.diceValue, gameState.isMoving, gameState.gameWinner]);
 
