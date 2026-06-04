@@ -135,8 +135,10 @@ export const BoardGame: React.FC = () => {
       const currentPos = currentPlayer === 1 ? prev.player1Position : prev.player2Position;
       const nextStart = currentPlayer === 1 ? prev.player1NextStart : prev.player2NextStart;
 
-      const startPos = nextStart !== null ? nextStart : currentPos;
-      const newPosition = Math.min(startPos + steps, BOARD_SIZE);
+      // If a shortcut is queued, the jump itself counts as the first step
+      const rawPosition =
+        nextStart !== null ? nextStart + (steps - 1) : currentPos + steps;
+      const newPosition = Math.min(rawPosition, BOARD_SIZE);
 
       let winner: 1 | 2 | null = null;
       if (newPosition >= BOARD_SIZE) winner = currentPlayer;
