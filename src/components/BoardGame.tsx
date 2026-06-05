@@ -27,8 +27,8 @@ const BOARD_SIZE = 32;
 const SHORTCUTS = {
   5: 10,
   8: 15,
-  14: 22,
-  18: 26
+  14: 21,
+  18: 25
 };
 
 const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
