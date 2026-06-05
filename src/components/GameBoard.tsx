@@ -176,7 +176,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
           getZoneClass(cellNumber),
           isShortcut && 'ring-2 ring-yellow-300/60',
           isFinish && 'ring-2 ring-amber-300',
-          isCurrent && 'ring-4 ring-yellow-300 animate-glow-pulse scale-105 z-10'
+          isCurrentP1 && 'border-player-1 ring-4 ring-player-1 shadow-[0_0_20px_hsl(var(--player-1)/0.7)] z-10',
+          isCurrentP2 && 'border-player-2 ring-4 ring-player-2 shadow-[0_0_20px_hsl(var(--player-2)/0.7)] z-10'
         )}
       >
         <div className="text-sm font-bold text-white mb-1 flex items-center gap-1">
