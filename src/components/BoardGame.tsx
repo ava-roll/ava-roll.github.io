@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Trophy, ImageIcon } from 'lucide-react';
 import { GameBoard } from './GameBoard';
 import { ImageStack } from './ImageStack';
 import { useToast } from '@/hooks/use-toast';
 import { sounds } from '@/lib/sounds';
+import { isVideo } from '@/lib/media';
+import { cn } from '@/lib/utils';
+import playerMale from '@/assets/player-male.png';
+import playerFemale from '@/assets/player-female.png';
 
 // Import sample GIFs
 import celebration1 from '@/assets/gifs/player1/celebration1.jpg';
@@ -79,6 +82,7 @@ export const BoardGame: React.FC = () => {
   const [showGIFModal, setShowGIFModal] = useState(false);
   const [currentGIF, setCurrentGIF] = useState<string>('');
   const [showImageStack, setShowImageStack] = useState<1 | 2 | null>(null);
+  const [replayMode, setReplayMode] = useState(false);
 
   // Dice modal state
   const [showDiceModal, setShowDiceModal] = useState(false);
@@ -97,7 +101,6 @@ export const BoardGame: React.FC = () => {
     setPendingDice(null);
     setShowDiceModal(true);
 
-    // Cycle dice faces
     const interval = setInterval(() => {
       setDiceFace(Math.floor(Math.random() * 6) + 1);
     }, 90);
@@ -135,7 +138,6 @@ export const BoardGame: React.FC = () => {
       const currentPos = currentPlayer === 1 ? prev.player1Position : prev.player2Position;
       const nextStart = currentPlayer === 1 ? prev.player1NextStart : prev.player2NextStart;
 
-      // If a shortcut is queued, the jump itself counts as the first step
       const rawPosition =
         nextStart !== null ? nextStart + (steps - 1) : currentPos + steps;
       const newPosition = Math.min(rawPosition, BOARD_SIZE);
@@ -202,10 +204,21 @@ export const BoardGame: React.FC = () => {
         [player === 1 ? 'player1Stack' : 'player2Stack']: newStack
       };
       setCurrentGIF(gifUrl);
+      setReplayMode(false);
       setShowGIFModal(true);
       sounds.reveal();
       return newState;
     });
+  };
+
+  const replayReward = (cellNumber: number, player: 1 | 2) => {
+    const key = `${player}_${cellNumber}`;
+    const url = gameState.revealedGIFs[key];
+    if (!url) return;
+    sounds.click();
+    setCurrentGIF(url);
+    setReplayMode(true);
+    setShowGIFModal(true);
   };
 
   const nextTurn = () => {
@@ -237,12 +250,54 @@ export const BoardGame: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!showGIFModal && gameState.diceValue && !gameState.isMoving && !gameState.gameWinner) {
+    if (
+      !showGIFModal &&
+      !replayMode &&
+      gameState.diceValue &&
+      !gameState.isMoving &&
+      !gameState.gameWinner
+    ) {
       nextTurn();
     }
   }, [showGIFModal, gameState.diceValue, gameState.isMoving, gameState.gameWinner]);
 
   const DiceIcon = DICE_ICONS[diceFace - 1];
+
+  const PlayerPanel = ({ player }: { player: 1 | 2 }) => {
+    const isCurrent = gameState.currentPlayer === player;
+    const pos = player === 1 ? gameState.player1Position : gameState.player2Position;
+    const stack = player === 1 ? gameState.player1Stack : gameState.player2Stack;
+    const img = player === 1 ? playerMale : playerFemale;
+    return (
+      <div
+        className={cn(
+          'flex items-center gap-3 rounded-lg border-2 p-3 transition-all flex-1 min-w-[240px]',
+          isCurrent
+            ? player === 1
+              ? 'border-player-1 bg-player-1/10 ring-2 ring-player-1/40'
+              : 'border-player-2 bg-player-2/10 ring-2 ring-player-2/40'
+            : 'border-border bg-card'
+        )}
+      >
+        <img src={img} alt={`Player ${player}`} className="w-12 h-12 object-contain" />
+        <div className="flex-1">
+          <div className="font-semibold text-sm">Player {player}{isCurrent && ' • turn'}</div>
+          <div className="text-xs text-muted-foreground">
+            Cell <span className="font-bold text-foreground">{pos}</span>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { sounds.click(); setShowImageStack(player); }}
+          className="flex items-center gap-1"
+        >
+          <ImageIcon className="h-4 w-4" />
+          Stack ({stack.length})
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -257,36 +312,9 @@ export const BoardGame: React.FC = () => {
         </div>
 
         <Card className="mb-6 p-4">
-          <div className="flex justify-between items-center flex-wrap gap-4">
-            <div className="flex gap-4 flex-wrap">
-              <Badge variant={gameState.currentPlayer === 1 ? "default" : "secondary"} className="text-lg px-4 py-2">
-                Player 1 — Current Cell: <span className="ml-2 font-bold">{gameState.player1Position}</span>
-              </Badge>
-              <Badge variant={gameState.currentPlayer === 2 ? "default" : "secondary"} className="text-lg px-4 py-2">
-                Player 2 — Current Cell: <span className="ml-2 font-bold">{gameState.player2Position}</span>
-              </Badge>
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { sounds.click(); setShowImageStack(1); }}
-                className="flex items-center gap-2"
-              >
-                <ImageIcon className="h-4 w-4" />
-                P1 Stack ({gameState.player1Stack.length})
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { sounds.click(); setShowImageStack(2); }}
-                className="flex items-center gap-2"
-              >
-                <ImageIcon className="h-4 w-4" />
-                P2 Stack ({gameState.player2Stack.length})
-              </Button>
-            </div>
+          <div className="flex gap-3 flex-wrap">
+            <PlayerPanel player={1} />
+            <PlayerPanel player={2} />
           </div>
         </Card>
 
@@ -294,6 +322,7 @@ export const BoardGame: React.FC = () => {
           <GameBoard
             gameState={gameState}
             shortcuts={SHORTCUTS}
+            onReplayReward={replayReward}
           />
         </Card>
 
@@ -363,18 +392,29 @@ export const BoardGame: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* GIF Reveal Modal */}
+      {/* Reward Reveal Modal */}
       <Dialog open={showGIFModal} onOpenChange={setShowGIFModal}>
         <DialogContent hideCloseButton className="max-w-2xl w-[70vw] h-[70vh] p-0">
           <div
             className="flex items-center justify-center h-full cursor-pointer"
             onClick={() => setShowGIFModal(false)}
           >
-            <img
-              src={currentGIF}
-              alt="Revealed GIF"
-              className="max-w-full max-h-full object-contain rounded-lg"
-            />
+            {isVideo(currentGIF) ? (
+              <video
+                src={currentGIF}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
+            ) : (
+              <img
+                src={currentGIF}
+                alt="Revealed reward"
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
