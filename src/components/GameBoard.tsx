@@ -85,6 +85,20 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
     };
   };
 
+  const applyScale = (s: TokenStyle | null, scale: number): TokenStyle | null => {
+    if (!s) return s;
+    if (scale === 1) return s;
+    const newW = s.width * scale;
+    const newH = s.height * scale;
+    return {
+      ...s,
+      left: s.left - (newW - s.width) / 2,
+      top: s.top - (newH - s.height) / 2,
+      width: newW,
+      height: newH,
+    };
+  };
+
   useLayoutEffect(() => {
     const update = () => {
       const p1Pos = gameState.player1Position;
@@ -92,9 +106,20 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
       const p1Key = slotKey(p1Pos);
       const p2Key = slotKey(p2Pos);
       const sameSlot = p1Key === p2Key;
+      const atStartP1 = p1Key === 'START';
+      const atStartP2 = p2Key === 'START';
 
-      setP1Style(computeStyle(p1Pos, sameSlot ? -1 : 0));
-      setP2Style(computeStyle(p2Pos, sameSlot ? 1 : 0));
+      // On the START gate, players always keep their fixed sides (P1 left, P2 right),
+      // so removing one doesn't recenter the other.
+      const p1Offset = atStartP1 ? -1 : sameSlot ? -1 : 0;
+      const p2Offset = atStartP2 ? 1 : sameSlot ? 1 : 0;
+
+      const isCurrentP1 = gameState.currentPlayer === 1 && !gameState.gameWinner;
+      const isCurrentP2 = gameState.currentPlayer === 2 && !gameState.gameWinner;
+
+      setP1Style(applyScale(computeStyle(p1Pos, p1Offset), isCurrentP1 ? 1.2 : 1));
+      setP2Style(applyScale(computeStyle(p2Pos, p2Offset), isCurrentP2 ? 1.2 : 1));
+
 
       const cont = containerRef.current;
       if (cont) {
@@ -127,6 +152,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
     gameState.player1Position,
     gameState.player2Position,
     gameState.gameWinner,
+    gameState.currentPlayer,
     shortcuts,
   ]);
 
@@ -150,7 +176,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
           getZoneClass(cellNumber),
           isShortcut && 'ring-2 ring-yellow-300/60',
           isFinish && 'ring-2 ring-amber-300',
-          isCurrent && 'ring-4 ring-yellow-300 animate-glow-pulse scale-105 z-10'
+          isCurrentP1 && 'border-player-1 ring-4 ring-player-1 shadow-[0_0_20px_hsl(var(--player-1)/0.7)] z-10',
+          isCurrentP2 && 'border-player-2 ring-4 ring-player-2 shadow-[0_0_20px_hsl(var(--player-2)/0.7)] z-10'
         )}
       >
         <div className="text-sm font-bold text-white mb-1 flex items-center gap-1">

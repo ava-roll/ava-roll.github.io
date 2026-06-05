@@ -19,13 +19,10 @@ export const ImageStack: React.FC<ImageStackProps> = ({ player, stack, onClose }
       {/* Main Stack Dialog */}
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
-          <DialogHeader className="flex flex-row items-center justify-between">
+          <DialogHeader>
             <DialogTitle className="text-xl">
               Player {player}'s Collection ({stack.length} images)
             </DialogTitle>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
           </DialogHeader>
           
           <div className="overflow-y-auto max-h-[60vh] pr-2">
