@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { X, ZoomIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isVideo } from '@/lib/media';
 
 interface ImageStackProps {
   player: 1 | 2;
@@ -46,11 +47,22 @@ export const ImageStack: React.FC<ImageStackProps> = ({ player, stack, onClose }
                     )}
                     onClick={() => setSelectedImage(item)}
                   >
-                    <img
-                      src={item.gif}
-                      alt={`Cell ${item.cellNumber}`}
-                      className="w-full aspect-square object-cover"
-                    />
+                    {isVideo(item.gif) ? (
+                      <video
+                        src={item.gif}
+                        muted
+                        loop
+                        playsInline
+                        autoPlay
+                        className="w-full aspect-square object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={item.gif}
+                        alt={`Cell ${item.cellNumber}`}
+                        className="w-full aspect-square object-cover"
+                      />
+                    )}
                     
                     {/* Overlay */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
@@ -87,11 +99,22 @@ export const ImageStack: React.FC<ImageStackProps> = ({ player, stack, onClose }
               </Button>
               
               <div className="text-center">
-                <img
-                  src={selectedImage.gif}
-                  alt={`Cell ${selectedImage.cellNumber}`}
-                  className="max-w-full max-h-[80vh] object-contain rounded-lg"
-                />
+                {isVideo(selectedImage.gif) ? (
+                  <video
+                    src={selectedImage.gif}
+                    autoPlay
+                    loop
+                    playsInline
+                    controls
+                    className="max-w-full max-h-[80vh] object-contain rounded-lg"
+                  />
+                ) : (
+                  <img
+                    src={selectedImage.gif}
+                    alt={`Cell ${selectedImage.cellNumber}`}
+                    className="max-w-full max-h-[80vh] object-contain rounded-lg"
+                  />
+                )}
                 <div className="mt-4">
                   <div className={cn(
                     'inline-block px-4 py-2 rounded text-sm font-semibold text-white',

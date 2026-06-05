@@ -8,6 +8,7 @@ import playerFemale from '@/assets/player-female.png';
 interface GameBoardProps {
   gameState: GameState;
   shortcuts: { [key: number]: number };
+  onReplayReward: (cellNumber: number, player: 1 | 2) => void;
 }
 
 type TokenStyle = {
@@ -24,17 +25,15 @@ type ArrowPath = {
   d: string;
 };
 
-// Layout: 9 columns x 4 rows = 36 slots. 32 playing cells + START + FINISH + 2 spacers.
-// Entries: number = play cell, 'START' | 'FINISH' = special, null = empty spacer.
-type Slot = number | 'START' | 'FINISH' | null;
-const LAYOUT: Slot[][] = [
-  ['START', 1, 2, 3, 4, 5, 6, 7, 8],
-  [null, 9, 10, 11, 12, 13, 14, 15, 16],
-  [17, 18, 19, 20, 21, 22, 23, 24, null],
-  [25, 26, 27, 28, 29, 30, 31, 32, 'FINISH'],
+// 8 columns x 4 rows = 32 playing cells.
+const LAYOUT: number[][] = [
+  [1, 2, 3, 4, 5, 6, 7, 8],
+  [9, 10, 11, 12, 13, 14, 15, 16],
+  [17, 18, 19, 20, 21, 22, 23, 24],
+  [25, 26, 27, 28, 29, 30, 31, 32],
 ];
 
-export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) => {
+export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onReplayReward }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cellRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [p1Style, setP1Style] = useState<TokenStyle | null>(null);
@@ -50,11 +49,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
 
   const hasShortcut = (cellNumber: number) => shortcuts[cellNumber] !== undefined;
 
-  const slotKey = (pos: number, winner: boolean) => {
-    if (winner) return 'FINISH';
-    if (pos <= 0) return 'START';
-    return String(pos);
-  };
+  const slotKey = (pos: number) => (pos <= 0 ? 'START' : String(pos));
 
   const cellRect = (key: string) => {
     const cont = containerRef.current;
@@ -75,12 +70,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
     };
   };
 
-  const computeStyle = (
-    pos: number,
-    winner: boolean,
-    sideOffset: number // -1 left, 0 center, 1 right
-  ): TokenStyle | null => {
-    const key = slotKey(pos, winner);
+  const computeStyle = (pos: number, sideOffset: number): TokenStyle | null => {
+    const key = slotKey(pos);
     const c = cellRect(key);
     if (!c) return null;
     const offset = sideOffset * (c.w * 0.22);
@@ -98,14 +89,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
     const update = () => {
       const p1Pos = gameState.player1Position;
       const p2Pos = gameState.player2Position;
-      const p1Win = gameState.gameWinner === 1;
-      const p2Win = gameState.gameWinner === 2;
-      const p1Key = slotKey(p1Pos, p1Win);
-      const p2Key = slotKey(p2Pos, p2Win);
+      const p1Key = slotKey(p1Pos);
+      const p2Key = slotKey(p2Pos);
       const sameSlot = p1Key === p2Key;
 
-      setP1Style(computeStyle(p1Pos, p1Win, sameSlot ? -1 : 0));
-      setP2Style(computeStyle(p2Pos, p2Win, sameSlot ? 1 : 0));
+      setP1Style(computeStyle(p1Pos, sameSlot ? -1 : 0));
+      setP2Style(computeStyle(p2Pos, sameSlot ? 1 : 0));
 
       const cont = containerRef.current;
       if (cont) {
@@ -118,7 +107,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
         const a = cellRect(String(from));
         const b = cellRect(String(to));
         if (!a || !b) return;
-        // End slightly above the cell center so the arrowhead doesn't cover the number label
         const startX = a.x;
         const startY = a.y - a.h * 0.25;
         const endX = b.x;
@@ -142,42 +130,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
     shortcuts,
   ]);
 
-  const renderCell = (slot: Slot) => {
-    if (slot === null) {
-      return <div className="aspect-square" />;
-    }
-
-    if (slot === 'START' || slot === 'FINISH') {
-      const isStart = slot === 'START';
-      return (
-        <div
-          ref={(el) => (cellRefs.current[slot] = el)}
-          className={cn(
-            'relative aspect-square rounded-lg border-2 flex flex-col items-center justify-center text-center p-2 transition-all duration-300',
-            isStart
-              ? 'bg-emerald-600/80 border-emerald-300'
-              : 'bg-amber-500/80 border-amber-300 ring-2 ring-yellow-300/70'
-          )}
-        >
-          {isStart ? (
-            <Play className="h-6 w-6 text-white mb-1" fill="currentColor" />
-          ) : (
-            <Flag className="h-6 w-6 text-white mb-1" fill="currentColor" />
-          )}
-          <div className="text-[10px] font-bold text-white tracking-wider">
-            {slot}
-          </div>
-        </div>
-      );
-    }
-
-    const cellNumber = slot;
+  const renderCell = (cellNumber: number) => {
     const isShortcut = hasShortcut(cellNumber);
+    const isFinish = cellNumber === 32;
     const isCurrentP1 =
       gameState.currentPlayer === 1 && gameState.player1Position === cellNumber;
     const isCurrentP2 =
       gameState.currentPlayer === 2 && gameState.player2Position === cellNumber;
     const isCurrent = isCurrentP1 || isCurrentP2;
+
+    const p1Activated = gameState.revealedGIFs[`1_${cellNumber}`] !== undefined;
+    const p2Activated = gameState.revealedGIFs[`2_${cellNumber}`] !== undefined;
 
     return (
       <div
@@ -186,10 +149,35 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
           'relative aspect-square rounded-lg border-2 border-border flex flex-col items-center justify-center text-center p-2 transition-all duration-300',
           getZoneClass(cellNumber),
           isShortcut && 'ring-2 ring-yellow-300/60',
+          isFinish && 'ring-2 ring-amber-300',
           isCurrent && 'ring-4 ring-yellow-300 animate-glow-pulse scale-105 z-10'
         )}
       >
-        <div className="text-sm font-bold text-white mb-1">{cellNumber}</div>
+        <div className="text-sm font-bold text-white mb-1 flex items-center gap-1">
+          {isFinish && <Flag className="h-3.5 w-3.5" fill="currentColor" />}
+          {cellNumber}
+        </div>
+
+        {(p1Activated || p2Activated) && (
+          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1 z-20">
+            {p1Activated && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onReplayReward(cellNumber, 1); }}
+                className="w-4 h-4 rounded-full bg-player-1 ring-1 ring-white/70 hover:scale-125 transition-transform"
+                aria-label={`Replay Player 1 reward at cell ${cellNumber}`}
+                title="Player 1 reward"
+              />
+            )}
+            {p2Activated && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onReplayReward(cellNumber, 2); }}
+                className="w-4 h-4 rounded-full bg-player-2 ring-1 ring-white/70 hover:scale-125 transition-transform"
+                aria-label={`Replay Player 2 reward at cell ${cellNumber}`}
+                title="Player 2 reward"
+              />
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -213,7 +201,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
           opacity: style.opacity,
           transition:
             'left 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease',
-          zIndex: 20,
+          zIndex: 30,
         }}
       >
         <div className="relative w-full h-full flex items-end justify-center">
@@ -243,27 +231,29 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts }) =>
 
   return (
     <div className="p-6">
-      {/* Player Legend */}
-      <div className="flex justify-center gap-6 mb-6">
-        <div className="flex items-center gap-2">
-          <img src={playerMale} alt="Player 1" className="w-8 h-8 object-contain" />
-          <span className="text-sm text-muted-foreground">Player 1</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <img src={playerFemale} alt="Player 2" className="w-8 h-8 object-contain" />
-          <span className="text-sm text-muted-foreground">Player 2</span>
-        </div>
-      </div>
-
-      {/* Game Board */}
-      <div ref={containerRef} className="relative space-y-2">
-        {LAYOUT.map((row, ri) => (
-          <div key={ri} className="grid grid-cols-9 gap-2">
-            {row.map((slot, ci) => (
-              <React.Fragment key={ci}>{renderCell(slot)}</React.Fragment>
-            ))}
+      <div ref={containerRef} className="relative">
+        {/* Start gate (pre-board home) */}
+        <div className="mb-3 flex justify-center">
+          <div
+            ref={(el) => (cellRefs.current['START'] = el)}
+            className="relative h-20 w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center"
+          >
+            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-400">
+              <Play className="h-3.5 w-3.5" fill="currentColor" />
+              START
+            </div>
           </div>
-        ))}
+        </div>
+
+        <div className="space-y-2">
+          {LAYOUT.map((row, ri) => (
+            <div key={ri} className="grid grid-cols-8 gap-2">
+              {row.map((slot, ci) => (
+                <React.Fragment key={ci}>{renderCell(slot)}</React.Fragment>
+              ))}
+            </div>
+          ))}
+        </div>
 
         {/* Shortcut arrows overlay */}
         {svgSize.w > 0 && (
