@@ -424,27 +424,39 @@ export const BoardGame: React.FC = () => {
 
       {/* Reward Reveal Modal */}
       <Dialog open={showGIFModal} onOpenChange={setShowGIFModal}>
-        <DialogContent hideCloseButton className="max-w-2xl w-[70vw] h-[70vh] p-0">
+        <DialogContent hideCloseButton className="max-w-2xl w-[70vw] h-[70vh] p-0 overflow-hidden">
           <div
-            className="flex items-center justify-center h-full cursor-pointer"
+            className="flex flex-col h-full cursor-pointer"
             onClick={() => setShowGIFModal(false)}
           >
-            {isVideo(currentGIF) ? (
-              <video
-                src={currentGIF}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="max-w-full max-h-full object-contain rounded-lg"
-              />
-            ) : (
-              <img
-                src={currentGIF}
-                alt="Revealed reward"
-                className="max-w-full max-h-full object-contain rounded-lg"
-              />
+            {revealInfo && (
+              <div
+                className={cn(
+                  'px-4 py-2 text-center text-sm font-semibold text-white',
+                  revealInfo.player === 1 ? 'bg-player-1' : 'bg-player-2'
+                )}
+              >
+                {playerNames[revealInfo.player]} • Cell {revealInfo.cell}
+              </div>
             )}
+            <div className="flex-1 flex items-center justify-center min-h-0 p-2">
+              {isVideo(currentGIF) ? (
+                <video
+                  src={currentGIF}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
+              ) : (
+                <img
+                  src={currentGIF}
+                  alt="Revealed reward"
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
