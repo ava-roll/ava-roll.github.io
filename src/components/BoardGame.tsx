@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Trophy, ImageIcon } from 'lucide-react';
+import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Trophy, ImageIcon, Pencil, Check } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { GameBoard } from './GameBoard';
 import { ImageStack } from './ImageStack';
 import { useToast } from '@/hooks/use-toast';
@@ -81,8 +82,12 @@ export const BoardGame: React.FC = () => {
 
   const [showGIFModal, setShowGIFModal] = useState(false);
   const [currentGIF, setCurrentGIF] = useState<string>('');
+  const [revealInfo, setRevealInfo] = useState<{ player: 1 | 2; cell: number } | null>(null);
   const [showImageStack, setShowImageStack] = useState<1 | 2 | null>(null);
   const [replayMode, setReplayMode] = useState(false);
+  const [playerNames, setPlayerNames] = useState<{ 1: string; 2: string }>({ 1: 'Player 1', 2: 'Player 2' });
+  const [editingPlayer, setEditingPlayer] = useState<1 | 2 | null>(null);
+  const [nameDraft, setNameDraft] = useState('');
 
   // Dice modal state
   const [showDiceModal, setShowDiceModal] = useState(false);
@@ -208,8 +213,11 @@ export const BoardGame: React.FC = () => {
       };
       setCurrentGIF(gifUrl);
       setReplayMode(false);
-      setShowGIFModal(true);
-      sounds.reveal();
+      setRevealInfo({ player, cell: cellNumber });
+      setTimeout(() => {
+        setShowGIFModal(true);
+        sounds.reveal();
+      }, 350);
       return newState;
     });
   };
@@ -220,6 +228,7 @@ export const BoardGame: React.FC = () => {
     if (!url) return;
     sounds.click();
     setCurrentGIF(url);
+    setRevealInfo({ player, cell: cellNumber });
     setReplayMode(true);
     setShowGIFModal(true);
   };
@@ -271,6 +280,12 @@ export const BoardGame: React.FC = () => {
     const pos = player === 1 ? gameState.player1Position : gameState.player2Position;
     const stack = player === 1 ? gameState.player1Stack : gameState.player2Stack;
     const img = player === 1 ? playerMale : playerFemale;
+    const isEditing = editingPlayer === player;
+    const saveName = () => {
+      const v = nameDraft.trim();
+      setPlayerNames(prev => ({ ...prev, [player]: v || `Player ${player}` }));
+      setEditingPlayer(null);
+    };
     return (
       <div
         className={cn(
@@ -283,8 +298,33 @@ export const BoardGame: React.FC = () => {
         )}
       >
         <img src={img} alt={`Player ${player}`} className="w-12 h-12 object-contain" />
-        <div className="flex-1">
-          <div className="font-semibold text-sm">Player {player}{isCurrent && ' • turn'}</div>
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <div className="flex items-center gap-1">
+              <Input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingPlayer(null); }}
+                className="h-7 text-sm"
+                maxLength={20}
+              />
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveName}>
+                <Check className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <div className="font-semibold text-sm truncate">{playerNames[player]}{isCurrent && ' • turn'}</div>
+              <button
+                onClick={() => { setNameDraft(playerNames[player]); setEditingPlayer(player); }}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Edit name"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </div>
+          )}
           <div className="text-xs text-muted-foreground">
             Cell <span className="font-bold text-foreground">{pos}</span>
           </div>
@@ -345,7 +385,7 @@ export const BoardGame: React.FC = () => {
                 <div className="mb-4">
                   <Trophy className="h-16 w-16 mx-auto text-yellow-500 mb-2" />
                   <h2 className="text-3xl font-bold">
-                    Player {gameState.gameWinner} Wins!
+                    {playerNames[gameState.gameWinner]} Wins!
                   </h2>
                   <p className="text-muted-foreground mt-2">
                     Congratulations on reaching the finish line!
@@ -384,27 +424,39 @@ export const BoardGame: React.FC = () => {
 
       {/* Reward Reveal Modal */}
       <Dialog open={showGIFModal} onOpenChange={setShowGIFModal}>
-        <DialogContent hideCloseButton className="max-w-2xl w-[70vw] h-[70vh] p-0">
+        <DialogContent hideCloseButton className="max-w-2xl w-[70vw] h-[70vh] p-0 overflow-hidden">
           <div
-            className="flex items-center justify-center h-full cursor-pointer"
+            className="flex flex-col h-full cursor-pointer"
             onClick={() => setShowGIFModal(false)}
           >
-            {isVideo(currentGIF) ? (
-              <video
-                src={currentGIF}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="max-w-full max-h-full object-contain rounded-lg"
-              />
-            ) : (
-              <img
-                src={currentGIF}
-                alt="Revealed reward"
-                className="max-w-full max-h-full object-contain rounded-lg"
-              />
+            {revealInfo && (
+              <div
+                className={cn(
+                  'px-4 py-2 text-center text-sm font-semibold text-white',
+                  revealInfo.player === 1 ? 'bg-player-1' : 'bg-player-2'
+                )}
+              >
+                {playerNames[revealInfo.player]} • Cell {revealInfo.cell}
+              </div>
             )}
+            <div className="flex-1 flex items-center justify-center min-h-0 p-2">
+              {isVideo(currentGIF) ? (
+                <video
+                  src={currentGIF}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
+              ) : (
+                <img
+                  src={currentGIF}
+                  alt="Revealed reward"
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
