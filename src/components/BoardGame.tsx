@@ -82,8 +82,12 @@ export const BoardGame: React.FC = () => {
 
   const [showGIFModal, setShowGIFModal] = useState(false);
   const [currentGIF, setCurrentGIF] = useState<string>('');
+  const [revealInfo, setRevealInfo] = useState<{ player: 1 | 2; cell: number } | null>(null);
   const [showImageStack, setShowImageStack] = useState<1 | 2 | null>(null);
   const [replayMode, setReplayMode] = useState(false);
+  const [playerNames, setPlayerNames] = useState<{ 1: string; 2: string }>({ 1: 'Player 1', 2: 'Player 2' });
+  const [editingPlayer, setEditingPlayer] = useState<1 | 2 | null>(null);
+  const [nameDraft, setNameDraft] = useState('');
 
   // Dice modal state
   const [showDiceModal, setShowDiceModal] = useState(false);
