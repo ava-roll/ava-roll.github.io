@@ -224,14 +224,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
           height: style.height,
           opacity: style.opacity,
           transition:
-            'left 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease',
+            'left 0.28s ease-in-out, top 0.28s ease-in-out, width 0.28s ease, height 0.28s ease, opacity 0.3s ease',
           zIndex: 30,
         }}
       >
         <div className="relative w-full h-full flex items-end justify-center">
           {isCurrent && (
             <Crown
-              className="absolute -top-1 left-1/2 -translate-x-1/2 h-5 w-5 text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] animate-fade-scale"
+              className="absolute left-1/2 h-5 w-5 text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] animate-fade-scale"
+              style={{ top: '25%', transform: 'translate(-50%, -110%)' }}
               fill="currentColor"
               strokeWidth={1.5}
             />
