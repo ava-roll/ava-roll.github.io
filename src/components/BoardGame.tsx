@@ -332,27 +332,14 @@ export const BoardGame: React.FC = () => {
         <Card className="p-6">
           <div className="flex flex-col items-center gap-4">
             {!gameState.gameWinner ? (
-              <>
-                <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">
-                    Player {gameState.currentPlayer}'s Turn
-                  </h3>
-                  {gameState.diceValue && (
-                    <p className="text-muted-foreground">
-                      Rolled: {gameState.diceValue}
-                    </p>
-                  )}
-                </div>
-
-                <Button
-                  onClick={rollDice}
-                  disabled={gameState.isRolling || gameState.isMoving || !!gameState.diceValue}
-                  className="text-lg px-8 py-4"
-                >
-                  <Dice6 className="mr-2 h-6 w-6" />
-                  {gameState.isRolling ? 'Rolling...' : gameState.isMoving ? 'Moving...' : 'Roll Dice'}
-                </Button>
-              </>
+              <Button
+                onClick={rollDice}
+                disabled={gameState.isRolling || gameState.isMoving || !!gameState.diceValue}
+                className="text-lg px-8 py-4"
+              >
+                <Dice6 className="mr-2 h-6 w-6" />
+                {gameState.isRolling ? 'Rolling...' : gameState.isMoving ? 'Moving...' : 'Roll Dice'}
+              </Button>
             ) : (
               <div className="text-center">
                 <div className="mb-4">
