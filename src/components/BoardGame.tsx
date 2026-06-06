@@ -125,61 +125,64 @@ export const BoardGame: React.FC = () => {
   };
 
   const movePlayer = (steps: number) => {
-    setGameState(prev => ({ ...prev, isMoving: true }));
+    const currentPlayer = gameState.currentPlayer;
+    const posField = currentPlayer === 1 ? 'player1Position' : 'player2Position';
+    const nextField = currentPlayer === 1 ? 'player1NextStart' : 'player2NextStart';
+    const currentPos = gameState[posField];
+    const nextStart = gameState[nextField];
+
+    const startFrom = nextStart !== null ? nextStart - 1 : currentPos;
+    const targetPos = Math.min(startFrom + steps, BOARD_SIZE);
+    const totalSteps = targetPos - startFrom;
+
+    setGameState(prev => ({
+      ...prev,
+      isMoving: true,
+      [posField]: startFrom,
+      [nextField]: null,
+    }));
     sounds.move();
 
-    let landedPlayer: 1 | 2 = 1;
-    let landedPosition = 0;
-    let landedWinner: 1 | 2 | null = null;
-    let landedShortcut: number | null = null;
+    const STEP_MS = 300;
+    let step = 0;
 
-    setGameState(prev => {
-      const currentPlayer = prev.currentPlayer;
-      const currentPos = currentPlayer === 1 ? prev.player1Position : prev.player2Position;
-      const nextStart = currentPlayer === 1 ? prev.player1NextStart : prev.player2NextStart;
+    const tick = () => {
+      step++;
+      const newPos = startFrom + step;
+      setGameState(prev => ({ ...prev, [posField]: newPos }));
 
-      const rawPosition =
-        nextStart !== null ? nextStart + (steps - 1) : currentPos + steps;
-      const newPosition = Math.min(rawPosition, BOARD_SIZE);
-
-      let winner: 1 | 2 | null = null;
-      if (newPosition >= BOARD_SIZE) winner = currentPlayer;
-
-      landedPlayer = currentPlayer;
-      landedPosition = newPosition;
-      landedWinner = winner;
-      if (!winner && SHORTCUTS[newPosition as keyof typeof SHORTCUTS]) {
-        landedShortcut = SHORTCUTS[newPosition as keyof typeof SHORTCUTS];
+      if (step < totalSteps) {
+        setTimeout(tick, STEP_MS);
+        return;
       }
 
-      return {
+      // Final step landed
+      const winner: 1 | 2 | null = newPos >= BOARD_SIZE ? currentPlayer : null;
+      const shortcut = !winner ? (SHORTCUTS[newPos as keyof typeof SHORTCUTS] ?? null) : null;
+
+      setGameState(prev => ({
         ...prev,
-        [currentPlayer === 1 ? 'player1Position' : 'player2Position']: newPosition,
-        [currentPlayer === 1 ? 'player1NextStart' : 'player2NextStart']: landedShortcut,
+        isMoving: false,
         gameWinner: winner,
-      };
-    });
+        [nextField]: shortcut,
+      }));
 
-    setTimeout(() => {
-      setGameState(prev => ({ ...prev, isMoving: false }));
-
-      if (landedWinner) {
+      if (winner) {
         sounds.win();
         return;
       }
 
-      if (landedPosition > 0) {
-        revealGIF(landedPosition, landedPlayer);
-
-        if (landedShortcut !== null) {
-          sounds.shortcut();
-          toast({
-            title: 'Shortcut Found!',
-            description: `Player ${landedPlayer} will start their next turn from cell ${landedShortcut}!`,
-          });
-        }
+      revealGIF(newPos, currentPlayer);
+      if (shortcut !== null) {
+        sounds.shortcut();
+        toast({
+          title: 'Shortcut Found!',
+          description: `Player ${currentPlayer} will start their next turn from cell ${shortcut}!`,
+        });
       }
-    }, 850);
+    };
+
+    setTimeout(tick, STEP_MS);
   };
 
   const revealGIF = (cellNumber: number, player: 1 | 2) => {
