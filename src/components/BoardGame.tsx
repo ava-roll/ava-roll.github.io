@@ -61,6 +61,7 @@ export interface GameState {
   player1Stack: Array<{ gif: string; cellNumber: number }>;
   player2Stack: Array<{ gif: string; cellNumber: number }>;
   revealedGIFs: { [key: string]: string };
+  tokenScale: { 1: number; 2: number };
 }
 
 export const BoardGame: React.FC = () => {
