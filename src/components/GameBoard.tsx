@@ -155,6 +155,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
           {cellNumber}
         </div>
 
+        {isShortcut && (
+          <div
+            className="absolute top-1 right-1 flex items-center gap-0.5 rounded-md bg-yellow-400/95 px-1 py-0.5 text-[10px] font-bold text-slate-900 shadow-md ring-1 ring-yellow-600/40"
+            title={`Ladder to cell ${shortcuts[cellNumber]}`}
+          >
+            <ArrowUp className="h-3 w-3" strokeWidth={3} />
+            {shortcuts[cellNumber]}
+          </div>
+        )}
+
         {p1Activated && (
           <button
             onClick={(e) => { e.stopPropagation(); onReplayReward(cellNumber, 1); }}
