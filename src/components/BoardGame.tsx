@@ -265,7 +265,8 @@ export const BoardGame: React.FC = () => {
       gameWinner: null,
       player1Stack: [],
       player2Stack: [],
-      revealedGIFs: {}
+      revealedGIFs: {},
+      tokenScale: { 1: 1, 2: 1 }
     });
     setShowGIFModal(false);
     setShowImageStack(null);
