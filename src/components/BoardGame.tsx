@@ -385,7 +385,7 @@ export const BoardGame: React.FC = () => {
                 <div className="mb-4">
                   <Trophy className="h-16 w-16 mx-auto text-yellow-500 mb-2" />
                   <h2 className="text-3xl font-bold">
-                    Player {gameState.gameWinner} Wins!
+                    {playerNames[gameState.gameWinner]} Wins!
                   </h2>
                   <p className="text-muted-foreground mt-2">
                     Congratulations on reaching the finish line!
