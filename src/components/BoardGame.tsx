@@ -13,20 +13,43 @@ import { cn } from '@/lib/utils';
 import playerMale from '@/assets/player-male.png';
 import playerFemale from '@/assets/player-female.png';
 
-// Auto-load all media files from the gifs folder.
-// Drop any new file into src/assets/gifs/player1/ or src/assets/gifs/player2/
-// (supports images, gifs, and videos) and it will appear in the game automatically.
-const player1Modules = import.meta.glob(
-  '@/assets/gifs/player1/*.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
+// Auto-load media per cell from src/assets/gifs/player{1,2}/cell{N}/*
+// Plus a default fallback per player at src/assets/gifs/player{1,2}/default.*
+// Drop a new file into a cell folder and it shows up automatically.
+const MEDIA_EXT = '{jpg,jpeg,png,gif,webp,mp4,webm,mov}';
+
+const player1CellModules = import.meta.glob(
+  '@/assets/gifs/player1/cell*/*.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
   { eager: true, query: '?url', import: 'default' }
 ) as Record<string, string>;
-const player2Modules = import.meta.glob(
-  '@/assets/gifs/player2/*.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
+const player2CellModules = import.meta.glob(
+  '@/assets/gifs/player2/cell*/*.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
+  { eager: true, query: '?url', import: 'default' }
+) as Record<string, string>;
+const player1DefaultModules = import.meta.glob(
+  '@/assets/gifs/player1/default.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
+  { eager: true, query: '?url', import: 'default' }
+) as Record<string, string>;
+const player2DefaultModules = import.meta.glob(
+  '@/assets/gifs/player2/default.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
   { eager: true, query: '?url', import: 'default' }
 ) as Record<string, string>;
 
-const player1Media = Object.values(player1Modules);
-const player2Media = Object.values(player2Modules);
+const groupByCell = (modules: Record<string, string>): Record<number, string[]> => {
+  const out: Record<number, string[]> = {};
+  for (const [path, url] of Object.entries(modules)) {
+    const m = path.match(/\/cell(\d+)\//i);
+    if (!m) continue;
+    const n = parseInt(m[1], 10);
+    (out[n] ||= []).push(url);
+  }
+  return out;
+};
+
+const player1CellMap = groupByCell(player1CellModules);
+const player2CellMap = groupByCell(player2CellModules);
+const player1Default = Object.values(player1DefaultModules)[0] ?? '';
+const player2Default = Object.values(player2DefaultModules)[0] ?? '';
 
 // Game data structure
 const BOARD_SIZE = 32;
@@ -39,18 +62,12 @@ const SHORTCUTS = {
 
 const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
 
-const createSampleGIFs = () => {
-  const player1GIFs = player1Media;
-  const player2GIFs = player2Media;
-  const cellData = [];
-  for (let i = 1; i <= BOARD_SIZE; i++) {
-    cellData.push({
-      cellNumber: i,
-      player1GIFs: [...player1GIFs],
-      player2GIFs: [...player2GIFs]
-    });
-  }
-  return cellData;
+const getMediaForCell = (player: 1 | 2, cellNumber: number): string[] => {
+  const map = player === 1 ? player1CellMap : player2CellMap;
+  const fallback = player === 1 ? player1Default : player2Default;
+  const files = map[cellNumber];
+  if (files && files.length > 0) return files;
+  return fallback ? [fallback] : [];
 };
 
 export interface GameState {
@@ -102,7 +119,7 @@ export const BoardGame: React.FC = () => {
   const [diceSettled, setDiceSettled] = useState(false);
   const [pendingDice, setPendingDice] = useState<number | null>(null);
 
-  const cellData = createSampleGIFs();
+  
 
   const rollDice = () => {
     if (gameState.isRolling || gameState.isMoving || gameState.gameWinner) return;
@@ -210,8 +227,8 @@ export const BoardGame: React.FC = () => {
     setGameState(prev => {
       let gifUrl = prev.revealedGIFs[key];
       if (!gifUrl) {
-        const cell = cellData[cellNumber - 1];
-        const gifs = player === 1 ? cell.player1GIFs : cell.player2GIFs;
+        const gifs = getMediaForCell(player, cellNumber);
+        if (gifs.length === 0) return prev;
         const randomIndex = Math.floor(Math.random() * gifs.length);
         gifUrl = gifs[randomIndex];
       }
