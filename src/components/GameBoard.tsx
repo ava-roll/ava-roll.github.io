@@ -2,13 +2,13 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Crown, Flag, Play, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameState } from './BoardGame';
-import playerMale from '@/assets/player-male.png';
-import playerFemale from '@/assets/player-female.png';
 
 interface GameBoardProps {
   gameState: GameState;
   shortcuts: { [key: number]: number };
   onReplayReward: (cellNumber: number, player: 1 | 2) => void;
+  player1Image: string;
+  player2Image: string;
 }
 
 type TokenStyle = {
