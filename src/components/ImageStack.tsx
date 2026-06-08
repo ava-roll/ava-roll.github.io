@@ -85,17 +85,8 @@ export const ImageStack: React.FC<ImageStackProps> = ({ player, stack, onClose }
       {selectedImage && (
         <Dialog open={true} onOpenChange={() => setSelectedImage(null)}>
           <DialogContent className="max-w-4xl w-[90vw] h-[90vh] p-2">
-            <div className="relative h-full flex items-center justify-center">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="absolute top-2 right-2 z-10"
-                onClick={() => setSelectedImage(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-              
-              <div className="text-center">
+            <div className="relative h-full flex items-center justify-center" onClick={() => setSelectedImage(null)}>
+              <div className="text-center" onClick={(e) => e.stopPropagation()}>
                 {isVideo(selectedImage.gif) ? (
                   <video
                     src={selectedImage.gif}

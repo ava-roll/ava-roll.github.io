@@ -10,8 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { sounds } from '@/lib/sounds';
 import { isVideo } from '@/lib/media';
 import { cn } from '@/lib/utils';
-import playerMale from '@/assets/player-male.png';
-import playerFemale from '@/assets/player-female.png';
+import { AvatarPicker, defaultAvatarFor, type Avatar } from './AvatarPicker';
 
 // Auto-load media per cell from src/assets/gifs/player{1,2}/cell{N}/*
 // Plus a default fallback per player at src/assets/gifs/player{1,2}/default.*
@@ -104,12 +103,17 @@ export const BoardGame: React.FC = () => {
     tokenScale: { 1: 1, 2: 1 }
   });
 
+  const defaultP1 = defaultAvatarFor(1);
+  const defaultP2 = defaultAvatarFor(2);
+  const [avatars, setAvatars] = useState<{ 1: Avatar; 2: Avatar }>({ 1: defaultP1, 2: defaultP2 });
+  const [pickingAvatar, setPickingAvatar] = useState<1 | 2 | null>(null);
+
   const [showGIFModal, setShowGIFModal] = useState(false);
   const [currentGIF, setCurrentGIF] = useState<string>('');
   const [revealInfo, setRevealInfo] = useState<{ player: 1 | 2; cell: number } | null>(null);
   const [showImageStack, setShowImageStack] = useState<1 | 2 | null>(null);
   const [replayMode, setReplayMode] = useState(false);
-  const [playerNames, setPlayerNames] = useState<{ 1: string; 2: string }>({ 1: 'Player 1', 2: 'Player 2' });
+  const [playerNames, setPlayerNames] = useState<{ 1: string; 2: string }>({ 1: defaultP1.name, 2: defaultP2.name });
   const [editingPlayer, setEditingPlayer] = useState<1 | 2 | null>(null);
   const [nameDraft, setNameDraft] = useState('');
 
@@ -312,7 +316,7 @@ export const BoardGame: React.FC = () => {
     const isCurrent = gameState.currentPlayer === player;
     const pos = player === 1 ? gameState.player1Position : gameState.player2Position;
     const stack = player === 1 ? gameState.player1Stack : gameState.player2Stack;
-    const img = player === 1 ? playerMale : playerFemale;
+    const img = avatars[player].url;
     const isEditing = editingPlayer === player;
     const saveName = () => {
       const v = nameDraft.trim();
@@ -330,7 +334,13 @@ export const BoardGame: React.FC = () => {
             : 'border-border bg-card'
         )}
       >
-        <img src={img} alt={`Player ${player}`} className="w-12 h-12 object-contain" />
+        <button
+          onClick={() => { sounds.click(); setPickingAvatar(player); }}
+          className="shrink-0 rounded-full overflow-hidden hover:ring-2 hover:ring-primary/40 transition"
+          aria-label="Change avatar"
+        >
+          <img src={img} alt={`Player ${player}`} className="w-12 h-12 object-contain" />
+        </button>
         <div className="flex-1 min-w-0">
           {isEditing ? (
             <div className="flex items-center gap-1">
@@ -457,8 +467,11 @@ export const BoardGame: React.FC = () => {
 
       {/* Reward Reveal Modal */}
       <Dialog open={showGIFModal} onOpenChange={setShowGIFModal}>
-        <DialogContent hideCloseButton className="max-w-4xl w-[90vw] h-[90vh] p-2">
-          <div className="relative h-full flex items-center justify-center">
+        <DialogContent className="max-w-4xl w-[90vw] h-[90vh] p-2">
+          <div
+            className="relative h-full flex items-center justify-center"
+            onClick={() => setShowGIFModal(false)}
+          >
             {revealInfo && (
               <div
                 className={cn(
@@ -469,7 +482,7 @@ export const BoardGame: React.FC = () => {
                 {playerNames[revealInfo.player]} • Cell {revealInfo.cell}
               </div>
             )}
-            <div className="text-center">
+            <div className="text-center" onClick={(e) => e.stopPropagation()}>
               {isVideo(currentGIF) ? (
                 <video
                   src={currentGIF}
@@ -496,6 +509,17 @@ export const BoardGame: React.FC = () => {
           player={showImageStack}
           stack={showImageStack === 1 ? gameState.player1Stack : gameState.player2Stack}
           onClose={() => setShowImageStack(null)}
+        />
+      )}
+
+      {pickingAvatar && (
+        <AvatarPicker
+          player={pickingAvatar}
+          onSelect={(a) => {
+            setAvatars(prev => ({ ...prev, [pickingAvatar]: a }));
+            setPlayerNames(prev => ({ ...prev, [pickingAvatar]: a.name }));
+          }}
+          onClose={() => setPickingAvatar(null)}
         />
       )}
     </div>
