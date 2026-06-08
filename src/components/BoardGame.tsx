@@ -457,36 +457,33 @@ export const BoardGame: React.FC = () => {
 
       {/* Reward Reveal Modal */}
       <Dialog open={showGIFModal} onOpenChange={setShowGIFModal}>
-        <DialogContent hideCloseButton className="max-w-2xl w-[70vw] h-[70vh] p-0 overflow-hidden">
-          <div
-            className="flex flex-col h-full cursor-pointer"
-            onClick={() => setShowGIFModal(false)}
-          >
+        <DialogContent hideCloseButton className="max-w-4xl w-[90vw] h-[90vh] p-2">
+          <div className="relative h-full flex items-center justify-center">
             {revealInfo && (
               <div
                 className={cn(
-                  'px-4 py-2 text-center text-sm font-semibold text-white',
+                  'absolute top-2 left-2 z-10 px-3 py-1 rounded text-xs font-semibold text-white',
                   revealInfo.player === 1 ? 'bg-player-1' : 'bg-player-2'
                 )}
               >
                 {playerNames[revealInfo.player]} • Cell {revealInfo.cell}
               </div>
             )}
-            <div className="flex-1 flex items-center justify-center min-h-0 p-2">
+            <div className="text-center">
               {isVideo(currentGIF) ? (
                 <video
                   src={currentGIF}
                   autoPlay
                   loop
-                  muted
                   playsInline
-                  className="max-w-full max-h-full object-contain rounded-lg"
+                  controls
+                  className="max-w-full max-h-[80vh] object-contain rounded-lg"
                 />
               ) : (
                 <img
                   src={currentGIF}
                   alt="Revealed reward"
-                  className="max-w-full max-h-full object-contain rounded-lg"
+                  className="max-w-full max-h-[80vh] object-contain rounded-lg"
                 />
               )}
             </div>
