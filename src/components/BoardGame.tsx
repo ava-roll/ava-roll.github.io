@@ -103,6 +103,11 @@ export const BoardGame: React.FC = () => {
     tokenScale: { 1: 1, 2: 1 }
   });
 
+  const defaultP1 = defaultAvatarFor(1);
+  const defaultP2 = defaultAvatarFor(2);
+  const [avatars, setAvatars] = useState<{ 1: Avatar; 2: Avatar }>({ 1: defaultP1, 2: defaultP2 });
+  const [pickingAvatar, setPickingAvatar] = useState<1 | 2 | null>(null);
+
   const [showGIFModal, setShowGIFModal] = useState(false);
   const [currentGIF, setCurrentGIF] = useState<string>('');
   const [revealInfo, setRevealInfo] = useState<{ player: 1 | 2; cell: number } | null>(null);
