@@ -409,23 +409,17 @@ export const BoardGame: React.FC = () => {
             gameState={gameState}
             shortcuts={SHORTCUTS}
             onReplayReward={replayReward}
+            onStartClick={rollDice}
+            started={gameState.player1Position > 0 || gameState.player2Position > 0}
+            currentPlayerName={playerNames[gameState.currentPlayer]}
             player1Image={avatars[1].url}
             player2Image={avatars[2].url}
           />
         </Card>
 
-        <Card className="p-6">
-          <div className="flex flex-col items-center gap-4">
-            {!gameState.gameWinner ? (
-              <Button
-                onClick={rollDice}
-                disabled={gameState.isRolling || gameState.isMoving || !!gameState.diceValue}
-                className="text-lg px-8 py-4"
-              >
-                <Dice6 className="mr-2 h-6 w-6" />
-                {gameState.isRolling ? 'Rolling...' : gameState.isMoving ? 'Moving...' : 'Roll Dice'}
-              </Button>
-            ) : (
+        {gameState.gameWinner && (
+          <Card className="p-6">
+            <div className="flex flex-col items-center gap-4">
               <div className="text-center">
                 <div className="mb-4">
                   <Trophy className="h-16 w-16 mx-auto text-yellow-500 mb-2" />
@@ -440,16 +434,16 @@ export const BoardGame: React.FC = () => {
                   Play Again
                 </Button>
               </div>
-            )}
-          </div>
-        </Card>
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Dice Roll Modal */}
       <Dialog open={showDiceModal} onOpenChange={(open) => { if (!open && diceSettled) confirmDice(); }}>
         <DialogContent hideCloseButton className="max-w-md flex flex-col items-center justify-center gap-6 py-10">
           <h2 className="text-2xl font-bold">
-            {diceSettled ? `You rolled ${pendingDice}!` : 'Rolling...'}
+            {diceSettled ? `${playerNames[gameState.currentPlayer]} rolled ${pendingDice}!` : 'Rolling...'}
           </h2>
           <button
             onClick={confirmDice}
@@ -484,14 +478,13 @@ export const BoardGame: React.FC = () => {
                 {playerNames[revealInfo.player]} • Cell {revealInfo.cell}
               </div>
             )}
-            <div className="text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center">
               {isVideo(currentGIF) ? (
                 <video
                   src={currentGIF}
                   autoPlay
                   loop
                   playsInline
-                  controls
                   className="max-w-full max-h-[80vh] object-contain rounded-lg"
                 />
               ) : (

@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import { Crown, Flag, Play, ArrowUp } from 'lucide-react';
+import { Flag, ArrowUp, Dice6 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameState } from './BoardGame';
 
@@ -7,6 +7,9 @@ interface GameBoardProps {
   gameState: GameState;
   shortcuts: { [key: number]: number };
   onReplayReward: (cellNumber: number, player: 1 | 2) => void;
+  onStartClick?: () => void;
+  started?: boolean;
+  currentPlayerName?: string;
   player1Image: string;
   player2Image: string;
 }
@@ -29,9 +32,9 @@ const LAYOUT: number[][] = [
   [32, 31, 30, 29, 28, 27, 26, 25],
 ];
 
-export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onReplayReward, player1Image, player2Image }) => {
+export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onReplayReward, onStartClick, started, currentPlayerName, player1Image, player2Image }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const cellRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const cellRefs = useRef<Record<string, HTMLElement | null>>({});
   const [p1Style, setP1Style] = useState<TokenStyle | null>(null);
   const [p2Style, setP2Style] = useState<TokenStyle | null>(null);
 
@@ -68,6 +71,20 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
     const key = slotKey(pos);
     const c = cellRect(key);
     if (!c) return null;
+    // On the START gate, flank the tokens to the left/right sides of the box
+    // so the START label in the middle stays visible and tappable.
+    if (key === 'START') {
+      const size = c.h * 0.95;
+      const gap = size * 0.15;
+      const left = sideOffset < 0 ? c.left - size - gap : c.right + gap;
+      return {
+        left,
+        top: c.top + (c.h - size) / 2,
+        width: size,
+        height: size,
+        opacity: 1,
+      };
+    }
     const offset = sideOffset * (c.w * 0.22);
     const pad = c.w * 0.08;
     return {
@@ -76,20 +93,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
       width: c.w - pad * 2,
       height: c.h - pad * 2,
       opacity: 1,
-    };
-  };
-
-  const applyScale = (s: TokenStyle | null, scale: number): TokenStyle | null => {
-    if (!s) return s;
-    if (scale === 1) return s;
-    const newW = s.width * scale;
-    const newH = s.height * scale;
-    return {
-      ...s,
-      left: s.left - (newW - s.width) / 2,
-      top: s.top - (newH - s.height) / 2,
-      width: newW,
-      height: newH,
     };
   };
 
@@ -108,11 +111,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
       const p1Offset = atStartP1 ? -1 : sameSlot ? -1 : 0;
       const p2Offset = atStartP2 ? 1 : sameSlot ? 1 : 0;
 
-      const isCurrentP1 = gameState.currentPlayer === 1 && !gameState.gameWinner;
-      const isCurrentP2 = gameState.currentPlayer === 2 && !gameState.gameWinner;
-
-      setP1Style(applyScale(computeStyle(p1Pos, p1Offset), isCurrentP1 ? 1.2 : 1));
-      setP2Style(applyScale(computeStyle(p2Pos, p2Offset), isCurrentP2 ? 1.2 : 1));
+      setP1Style(computeStyle(p1Pos, p1Offset));
+      setP2Style(computeStyle(p2Pos, p2Offset));
 
     };
     update();
@@ -191,8 +191,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
     img: string
   ) => {
     if (!style) return null;
-    const isCurrent =
-      gameState.currentPlayer === player && !gameState.isMoving && !gameState.gameWinner;
     const teleScale = gameState.tokenScale?.[player] ?? 1;
     return (
       <div
@@ -211,14 +209,6 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
         }}
       >
         <div className="relative w-full h-full flex items-end justify-center">
-          {isCurrent && (
-            <Crown
-              className="absolute left-1/2 h-5 w-5 text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] animate-fade-scale"
-              style={{ top: '25%', transform: 'translate(-50%, -110%)' }}
-              fill="currentColor"
-              strokeWidth={1.5}
-            />
-          )}
           <img
             src={img}
             alt={`Player ${player}`}
@@ -241,15 +231,22 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
       <div ref={containerRef} className="relative">
         {/* Start gate (pre-board home) */}
         <div className="mb-3 flex justify-center">
-          <div
+          <button
+            type="button"
             ref={(el) => (cellRefs.current['START'] = el)}
-            className="relative h-20 w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center"
+            onClick={() => onStartClick?.()}
+            aria-label={started ? 'Roll dice' : 'Start'}
+            title={started ? 'Roll dice' : 'Start'}
+            className="relative h-24 w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center cursor-pointer transition-all hover:bg-emerald-500/20 hover:border-emerald-400 active:scale-95"
           >
-            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-400">
-              <Play className="h-3.5 w-3.5" fill="currentColor" />
-              START
+            <div className="flex flex-col items-center gap-1 text-xs font-semibold text-emerald-400">
+              {currentPlayerName && (
+                <span className="max-w-[8rem] truncate">{currentPlayerName}</span>
+              )}
+              <Dice6 className="h-6 w-6" />
+              <span>{started ? 'ROLL DICE' : 'START'}</span>
             </div>
-          </div>
+          </button>
         </div>
 
         <div className="space-y-2">
