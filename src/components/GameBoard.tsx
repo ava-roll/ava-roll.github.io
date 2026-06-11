@@ -135,6 +135,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
       gameState.currentPlayer === 2 && gameState.player2Position === cellNumber;
     const isCurrent = isCurrentP1 || isCurrentP2;
 
+    // Arrow only between rolls (not while rolling or moving). Snake layout means
+    // rows 1 & 3 travel left->right (arrow on left), rows 2 & 4 right->left (arrow on right).
+    const row = LAYOUT.findIndex((r) => r.includes(cellNumber));
+    const arrowOnRight = row === 1 || row === 3;
+    const showArrow = isCurrent && !gameState.isMoving;
+
     const p1Activated = gameState.revealedGIFs[`1_${cellNumber}`] !== undefined;
     const p2Activated = gameState.revealedGIFs[`2_${cellNumber}`] !== undefined;
 
@@ -150,6 +156,19 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
           isCurrentP2 && 'border-player-2 ring-4 ring-player-2 shadow-[0_0_20px_hsl(var(--player-2)/0.7)] z-10'
         )}
       >
+        {showArrow && (
+          <div
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 h-0 w-0 z-20',
+              'border-y-[18px] border-y-transparent',
+              arrowOnRight
+                ? cn('right-0 border-r-[14px]', isCurrentP1 ? 'border-r-player-1' : 'border-r-player-2')
+                : cn('left-0 border-l-[14px]', isCurrentP1 ? 'border-l-player-1' : 'border-l-player-2')
+            )}
+            aria-hidden="true"
+          />
+        )}
+
         <div className="text-sm font-bold text-white mb-1 flex items-center gap-1">
           {isFinish && <Flag className="h-3.5 w-3.5" fill="currentColor" />}
           {cellNumber}

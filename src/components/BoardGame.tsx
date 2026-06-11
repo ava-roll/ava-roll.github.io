@@ -54,9 +54,11 @@ const player2Default = Object.values(player2DefaultModules)[0] ?? '';
 const BOARD_SIZE = 32;
 const SHORTCUTS = {
   5: 10,
-  8: 15,
-  14: 21,
-  18: 25
+  10: 16,
+  16: 21,
+  21: 25,
+  25: 28,
+  28: 16
 };
 
 const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
@@ -358,7 +360,7 @@ export const BoardGame: React.FC = () => {
             </div>
           ) : (
             <div className="flex items-center gap-1">
-              <div className="font-semibold text-sm truncate">{playerNames[player]}{isCurrent && ' • turn'}</div>
+              <div className="font-semibold text-sm truncate">{playerNames[player]}{isCurrent && ' • ROLL'}</div>
               <button
                 onClick={() => { setNameDraft(playerNames[player]); setEditingPlayer(player); }}
                 className="text-muted-foreground hover:text-foreground"
