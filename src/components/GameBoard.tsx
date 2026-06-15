@@ -41,6 +41,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
   const getZoneClass = (cellNumber: number) => {
     if (cellNumber <= 10) return 'bg-gradient-zone-1';
     if (cellNumber <= 21) return 'bg-gradient-zone-2';
+    if (cellNumber === 32) return 'bg-gradient-zone-4';
     return 'bg-gradient-zone-3';
   };
 
@@ -171,6 +172,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
 
         <div className="text-sm font-bold text-white mb-1 flex items-center gap-1">
           {isFinish && <Flag className="h-3.5 w-3.5" fill="currentColor" />}
+        </div>
+
+        <div className="text-sm font-bold text-white mb-1 flex items-center gap-1">
           {cellNumber}
         </div>
 

@@ -77,6 +77,7 @@ export default {
 				'gradient-zone-1': 'var(--gradient-zone-1)',
 				'gradient-zone-2': 'var(--gradient-zone-2)',
 				'gradient-zone-3': 'var(--gradient-zone-3)',
+				'gradient-zone-4': 'var(--gradient-zone-4)',
 				'gradient-primary': 'var(--gradient-primary)'
 			},
 			boxShadow: {
