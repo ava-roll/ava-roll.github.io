@@ -13,20 +13,56 @@ const femaleModules = import.meta.glob('@/assets/avatars/female/*.png', {
   import: 'default',
 }) as Record<string, string>;
 
-export type Avatar = { name: string; url: string };
+export type Gender = 'male' | 'female';
+export type Avatar = { name: string; url: string; gender: Gender };
 
-const toAvatars = (mods: Record<string, string>): Avatar[] =>
+const toAvatars = (mods: Record<string, string>, gender: Gender): Avatar[] =>
   Object.entries(mods)
     .map(([path, url]) => {
       const file = path.split('/').pop() || '';
       const name = file.replace(/\.[^.]+$/, '');
-      return { name, url };
+      return { name, url, gender };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-export const maleAvatars = toAvatars(maleModules);
-export const femaleAvatars = toAvatars(femaleModules);
+export const maleAvatars = toAvatars(maleModules, 'male');
+export const femaleAvatars = toAvatars(femaleModules, 'female');
 export const allAvatars = [...maleAvatars, ...femaleAvatars];
+
+// Progression images live in per-character folders:
+//   src/assets/avatars/<gender>/<Name>/<bits>.<ext>   e.g. male/Albatros/01001.png
+// where <bits> is the 5-char dice-tracking string. Keyed as "gender/name/bits".
+const progressionModules = import.meta.glob(
+  '@/assets/avatars/*/*/*.{png,jpg,jpeg,webp,gif}',
+  { eager: true, query: '?url', import: 'default' }
+) as Record<string, string>;
+
+const progressionMap: Record<string, string> = {};
+for (const [path, url] of Object.entries(progressionModules)) {
+  const parts = path.split('/');
+  const file = parts.pop() || '';
+  const name = parts.pop() || '';
+  const gender = parts.pop() || '';
+  const bits = file.replace(/\.[^.]+$/, '');
+  progressionMap[`${gender}/${name}/${bits}`] = url;
+}
+
+// Returns the progression image URL for a character at the given bit-string,
+// or null if no such file exists (caller should then leave the avatar unchanged).
+export const progressionImageFor = (
+  gender: Gender,
+  name: string,
+  bits: string
+): string | null => progressionMap[`${gender}/${name}/${bits}`] ?? null;
+
+// The board (token + side flanks) shows the progression image starting at the
+// initial "00000" bit-string (e.g. male/Albatros/00000.png). If that image is
+// missing, fall back to the flat portrait (male/Albatros.png). The players
+// component and the picker keep the flat portrait itself.
+export const INITIAL_BITS = '00000';
+
+export const boardAvatarUrl = (av: Avatar): string =>
+  progressionImageFor(av.gender, av.name, INITIAL_BITS) ?? av.url;
 
 export const defaultAvatarFor = (player: 1 | 2): Avatar => {
   const fallback = player === 1 ? maleAvatars[0] : femaleAvatars[0];

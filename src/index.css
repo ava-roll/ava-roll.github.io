@@ -132,3 +132,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Animated "cross out" for collected dice faces. The two strokes draw in
+   sequence; CROSS_ANIM_MS in GameBoard must cover the total duration. */
+@keyframes cross-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.cross-stroke {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: cross-draw 0.28s ease-out forwards;
+}
+
+.cross-stroke-2 {
+  animation-delay: 0.28s;
+}

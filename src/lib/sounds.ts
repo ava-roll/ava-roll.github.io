@@ -41,17 +41,16 @@ const playTones = (tones: Tone[]) => {
 
 export const sounds = {
   click: () =>
-    playTones([{ freq: 600, dur: 0.06, type: 'square', vol: 0.1 }]),
+    playTones([{ freq: 440, dur: 0.05, type: 'sine', vol: 0.05 }]),
   diceRoll: () =>
     playTones([
-      { freq: 300, dur: 0.05, type: 'square' },
-      { freq: 450, dur: 0.05, type: 'square', delay: 0.05 },
-      { freq: 380, dur: 0.05, type: 'square', delay: 0.05 },
-      { freq: 520, dur: 0.05, type: 'square', delay: 0.05 },
-      { freq: 600, dur: 0.08, type: 'square', delay: 0.05 },
+      { freq: 392, dur: 0.07, type: 'triangle', vol: 0.06 },
+      { freq: 440, dur: 0.07, type: 'triangle', vol: 0.06, delay: 0.06 },
+      { freq: 494, dur: 0.07, type: 'triangle', vol: 0.06, delay: 0.06 },
+      { freq: 523, dur: 0.1, type: 'triangle', vol: 0.07, delay: 0.06 },
     ]),
   move: () =>
-    playTones([{ freq: 700, dur: 0.08, type: 'triangle', vol: 0.12 }]),
+    playTones([{ freq: 660, dur: 0.08, type: 'sine', vol: 0.08 }]),
   reveal: () =>
     playTones([
       { freq: 523, dur: 0.12, type: 'sine' },

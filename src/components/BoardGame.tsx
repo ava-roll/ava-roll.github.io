@@ -4,13 +4,14 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Trophy, ImageIcon, Pencil, Check, ArrowUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { GameBoard } from './GameBoard';
+import { GameBoard, CROSS_ANIM_MS } from './GameBoard';
 import { ImageStack } from './ImageStack';
 import { useToast } from '@/hooks/use-toast';
 import { sounds } from '@/lib/sounds';
 import { isVideo } from '@/lib/media';
 import { cn } from '@/lib/utils';
-import { AvatarPicker, defaultAvatarFor, type Avatar } from './AvatarPicker';
+import { AvatarPicker, defaultAvatarFor, progressionImageFor, boardAvatarUrl, type Avatar } from './AvatarPicker';
+import { WinSplash } from './WinSplash';
 
 // Auto-load media per cell from src/assets/gifs/player{1,2}/cell{N}/*
 // Plus a default fallback per player at src/assets/gifs/player{1,2}/default.*
@@ -85,6 +86,12 @@ export interface GameState {
   player2Stack: Array<{ gif: string; cellNumber: number }>;
   revealedGIFs: { [key: string]: string };
   tokenScale: { 1: number; 2: number };
+  // Per-player dice-tracking: 5-element array (faces 1-5), index (n-1) flips to
+  // 1 when n is rolled (from each player's 2nd draw). Rolling a 6 fills all to 1.
+  diceTrack: { 1: number[]; 2: number[] };
+  rollCount: { 1: number; 2: number };
+  // True while the dice-face cross-out animation plays; blocks rolling/moving.
+  isAnimatingCross: boolean;
 }
 
 export const BoardGame: React.FC = () => {
@@ -102,22 +109,41 @@ export const BoardGame: React.FC = () => {
     player1Stack: [],
     player2Stack: [],
     revealedGIFs: {},
-    tokenScale: { 1: 1, 2: 1 }
+    tokenScale: { 1: 1, 2: 1 },
+    diceTrack: { 1: [0, 0, 0, 0, 0], 2: [0, 0, 0, 0, 0] },
+    rollCount: { 1: 0, 2: 0 },
+    isAnimatingCross: false
   });
 
   const defaultP1 = defaultAvatarFor(1);
   const defaultP2 = defaultAvatarFor(2);
+  // `avatars` holds the chosen avatar's flat portrait (male/female folder) and
+  // never changes with progression — it drives the players component and picker.
   const [avatars, setAvatars] = useState<{ 1: Avatar; 2: Avatar }>({ 1: defaultP1, 2: defaultP2 });
+  // `boardAvatars` is the progression image shown only on the board: the moving
+  // token and the flanking side avatars. Starts at "00000" and advances as
+  // items are collected.
+  const [boardAvatars, setBoardAvatars] = useState<{ 1: string; 2: string }>({ 1: boardAvatarUrl(defaultP1), 2: boardAvatarUrl(defaultP2) });
   const [pickingAvatar, setPickingAvatar] = useState<1 | 2 | null>(null);
 
   const [showGIFModal, setShowGIFModal] = useState(false);
   const [currentGIF, setCurrentGIF] = useState<string>('');
-  const [revealInfo, setRevealInfo] = useState<{ player: 1 | 2; cell: number } | null>(null);
+  const [revealInfo, setRevealInfo] = useState<{ player: 1 | 2; cell: number | null; label?: string; isItem?: boolean } | null>(null);
   const [showImageStack, setShowImageStack] = useState<1 | 2 | null>(null);
   const [replayMode, setReplayMode] = useState(false);
   const [playerNames, setPlayerNames] = useState<{ 1: string; 2: string }>({ 1: defaultP1.name, 2: defaultP2.name });
   const [editingPlayer, setEditingPlayer] = useState<1 | 2 | null>(null);
   const [nameDraft, setNameDraft] = useState('');
+
+  // When items are collected this roll, we queue their previews and hold the
+  // dice value here; the move runs only once every collected-item preview has
+  // been dismissed.
+  const [pendingMoveSteps, setPendingMoveSteps] = useState<number | null>(null);
+  const [itemQueue, setItemQueue] = useState<Array<{ player: 1 | 2; faceIndex: number; url: string }>>([]);
+
+  // Win splash is dismissed once the winner taps "Get Reward"; the board (and
+  // its reward-collection stacks) then stays available for revisiting.
+  const [splashDismissed, setSplashDismissed] = useState(false);
 
   // Dice modal state
   const [showDiceModal, setShowDiceModal] = useState(false);
@@ -128,7 +154,7 @@ export const BoardGame: React.FC = () => {
   
 
   const rollDice = () => {
-    if (gameState.isRolling || gameState.isMoving || gameState.gameWinner) return;
+    if (gameState.isRolling || gameState.isMoving || gameState.gameWinner || gameState.isAnimatingCross) return;
 
     sounds.diceRoll();
     setGameState(prev => ({ ...prev, isRolling: true }));
@@ -154,9 +180,101 @@ export const BoardGame: React.FC = () => {
     if (!diceSettled || pendingDice === null) return;
     sounds.click();
     const value = pendingDice;
+    const player = gameState.currentPlayer;
     setShowDiceModal(false);
-    setGameState(prev => ({ ...prev, diceValue: value }));
-    movePlayer(value);
+
+    // Dice tracking (5 faces, 1-5): only record from each player's 2nd draw
+    // onward. Rolling a 6 fills the whole array. crossAdded = a face flipped
+    // 0 -> 1 this draw.
+    const newCount = gameState.rollCount[player] + 1;
+    const prevTrack = gameState.diceTrack[player];
+    let track = prevTrack;
+    let crossAdded = false;
+    if (newCount >= 2) {
+      if (value === 6) {
+        if (prevTrack.some(v => v !== 1)) {
+          track = [1, 1, 1, 1, 1];
+          crossAdded = true;
+        }
+      } else if (prevTrack[value - 1] !== 1) {
+        track = prevTrack.slice();
+        track[value - 1] = 1;
+        crossAdded = true;
+      }
+    }
+
+    setGameState(prev => ({
+      ...prev,
+      diceValue: value,
+      rollCount: { ...prev.rollCount, [player]: newCount },
+      diceTrack: { ...prev.diceTrack, [player]: track },
+      isAnimatingCross: crossAdded || prev.isAnimatingCross,
+    }));
+
+    // Avatar progression: look for <gender>/<name>/<bits>.<ext>; if it exists,
+    // swap the BOARD avatar (token + side flanks) only. The players component
+    // and picker keep the initial image. If not found, leave it unchanged.
+    if (newCount >= 2) {
+      const av = avatars[player];
+      const url = progressionImageFor(av.gender, av.name, track.join(''));
+      if (url && url !== boardAvatars[player]) {
+        setBoardAvatars(prev => ({ ...prev, [player]: url }));
+      }
+    }
+
+    // Rolling a 6 (after the first draw) completes every item at once.
+    if (value === 6 && crossAdded) {
+      sounds.shortcut();
+      toast({
+        title: '🎉 Congratulations!',
+        description: `${playerNames[player]} rolled a 6 and collected all items!`,
+      });
+    }
+
+    // Items newly collected this roll (a face flipped 0 -> 1) that actually
+    // have an item image in the avatar folder. Items are optional: faces with
+    // no image are skipped so we never show an empty preview.
+    const av = avatars[player];
+    const collectedItems = track
+      .map((v, i) => (v === 1 && prevTrack[i] !== 1 ? i : -1))
+      .filter(i => i >= 0)
+      .map(i => ({ player, faceIndex: i, url: progressionImageFor(av.gender, av.name, String(i + 1)) }))
+      .filter((it): it is { player: 1 | 2; faceIndex: number; url: string } => !!it.url);
+
+    // After the cross animation, preview each collected item; the move runs
+    // only once every preview is dismissed. With no previewable item we move
+    // straight away, preserving the original flow.
+    const proceed = () => {
+      if (collectedItems.length > 0) {
+        setPendingMoveSteps(value);
+        const [first, ...rest] = collectedItems;
+        setItemQueue(rest);
+        showItemCollected(first.player, first.faceIndex, first.url);
+      } else {
+        movePlayer(value);
+      }
+    };
+
+    // When a face is newly crossed, block the UI until the cross animation
+    // finishes, then proceed. Block the auto-advance effect while previews show.
+    if (crossAdded) {
+      if (collectedItems.length > 0) setReplayMode(true);
+      setTimeout(() => {
+        setGameState(prev => ({ ...prev, isAnimatingCross: false }));
+        proceed();
+      }, CROSS_ANIM_MS);
+    } else {
+      movePlayer(value);
+    }
+  };
+
+  // Show the "item collected" preview (player-colored circle) for a face.
+  const showItemCollected = (player: 1 | 2, faceIndex: number, url: string) => {
+    setCurrentGIF(url);
+    setRevealInfo({ player, cell: null, label: `Item Nr ${faceIndex + 1} was collected`, isItem: true });
+    setReplayMode(true);
+    setShowGIFModal(true);
+    sounds.reveal();
   };
 
   const movePlayer = (steps: number) => {
@@ -260,6 +378,22 @@ export const BoardGame: React.FC = () => {
     });
   };
 
+  const previewAvatar = (player: 1 | 2) => {
+    sounds.click();
+    setCurrentGIF(boardAvatars[player]);
+    setRevealInfo({ player, cell: null });
+    setReplayMode(true);
+    setShowGIFModal(true);
+  };
+
+  const previewItem = (player: 1 | 2, faceIndex: number, url: string) => {
+    sounds.click();
+    setCurrentGIF(url);
+    setRevealInfo({ player, cell: null, label: `${avatars[player].name}'s item Nr ${faceIndex + 1}`, isItem: true });
+    setReplayMode(true);
+    setShowGIFModal(true);
+  };
+
   const replayReward = (cellNumber: number, player: 1 | 2) => {
     const key = `${player}_${cellNumber}`;
     const url = gameState.revealedGIFs[key];
@@ -269,6 +403,42 @@ export const BoardGame: React.FC = () => {
     setRevealInfo({ player, cell: cellNumber });
     setReplayMode(true);
     setShowGIFModal(true);
+  };
+
+  // Win splash "Get Reward": dismiss the splash and replay the winner's most
+  // recently collected reward, leaving the game state untouched so the player
+  // can still open the stacks to revisit their whole collection.
+  const handleGetReward = () => {
+    sounds.click();
+    setSplashDismissed(true);
+    const winner = gameState.gameWinner;
+    if (!winner) return;
+    const stack = winner === 1 ? gameState.player1Stack : gameState.player2Stack;
+    const last = stack[stack.length - 1];
+    if (!last) return;
+    setCurrentGIF(last.gif);
+    setRevealInfo({ player: winner, cell: last.cellNumber });
+    setReplayMode(true);
+    setShowGIFModal(true);
+  };
+
+  // Closing the reveal modal. During the collected-item flow this advances to
+  // the next queued item, or runs the held move once the queue is empty.
+  const handleRewardClose = () => {
+    if (pendingMoveSteps !== null) {
+      if (itemQueue.length > 0) {
+        const [next, ...rest] = itemQueue;
+        setItemQueue(rest);
+        showItemCollected(next.player, next.faceIndex, next.url);
+        return;
+      }
+      const steps = pendingMoveSteps;
+      setPendingMoveSteps(null);
+      setShowGIFModal(false);
+      movePlayer(steps);
+      return;
+    }
+    setShowGIFModal(false);
   };
 
   const nextTurn = () => {
@@ -294,10 +464,18 @@ export const BoardGame: React.FC = () => {
       player1Stack: [],
       player2Stack: [],
       revealedGIFs: {},
-      tokenScale: { 1: 1, 2: 1 }
+      tokenScale: { 1: 1, 2: 1 },
+      diceTrack: { 1: [0, 0, 0, 0, 0], 2: [0, 0, 0, 0, 0] },
+      rollCount: { 1: 0, 2: 0 },
+      isAnimatingCross: false
     });
     setShowGIFModal(false);
     setShowImageStack(null);
+    setPendingMoveSteps(null);
+    setItemQueue([]);
+    // Progression resets too; board avatars return to their initial "00000".
+    setBoardAvatars({ 1: boardAvatarUrl(avatars[1]), 2: boardAvatarUrl(avatars[2]) });
+    setSplashDismissed(false);
   };
 
   useEffect(() => {
@@ -388,8 +566,8 @@ export const BoardGame: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-background p-2 sm:p-3">
+      <div className="max-w-[1700px] mx-auto">
         <div className="text-center mb-6">
           <h1 className="text-4xl font-bold text-foreground mb-2">
             Board Game Adventure
@@ -413,9 +591,23 @@ export const BoardGame: React.FC = () => {
             onReplayReward={replayReward}
             onStartClick={rollDice}
             started={gameState.player1Position > 0 || gameState.player2Position > 0}
+            rollDisabled={
+              gameState.isRolling ||
+              gameState.isMoving ||
+              gameState.isAnimatingCross ||
+              !!gameState.gameWinner ||
+              showDiceModal ||
+              showGIFModal
+            }
             currentPlayerName={playerNames[gameState.currentPlayer]}
-            player1Image={avatars[1].url}
-            player2Image={avatars[2].url}
+            player1Image={boardAvatars[1]}
+            player2Image={boardAvatars[2]}
+            player1Name={playerNames[1]}
+            player2Name={playerNames[2]}
+            onAvatarPreview={previewAvatar}
+            onItemPreview={previewItem}
+            player1Faces={[1, 2, 3, 4, 5].map(n => progressionImageFor(avatars[1].gender, avatars[1].name, String(n)))}
+            player2Faces={[1, 2, 3, 4, 5].map(n => progressionImageFor(avatars[2].gender, avatars[2].name, String(n)))}
           />
         </Card>
 
@@ -429,7 +621,7 @@ export const BoardGame: React.FC = () => {
                     {playerNames[gameState.gameWinner]} Wins!
                   </h2>
                   <p className="text-muted-foreground mt-2">
-                    Congratulations on reaching the finish line!
+                    Open a stack to revisit your rewards, or start a new game.
                   </p>
                 </div>
                 <Button onClick={() => { sounds.click(); resetGame(); }} className="text-lg px-8 py-4">
@@ -440,6 +632,14 @@ export const BoardGame: React.FC = () => {
           </Card>
         )}
       </div>
+
+      {gameState.gameWinner && !splashDismissed && (
+        <WinSplash
+          winner={gameState.gameWinner}
+          winnerName={playerNames[gameState.gameWinner]}
+          onGetReward={handleGetReward}
+        />
+      )}
 
       {/* Dice Roll Modal */}
       <Dialog open={showDiceModal} onOpenChange={(open) => { if (!open && diceSettled) confirmDice(); }}>
@@ -464,11 +664,11 @@ export const BoardGame: React.FC = () => {
       </Dialog>
 
       {/* Reward Reveal Modal */}
-      <Dialog open={showGIFModal} onOpenChange={setShowGIFModal}>
+      <Dialog open={showGIFModal} onOpenChange={(open) => { if (!open) handleRewardClose(); }}>
         <DialogContent className="max-w-4xl w-[90vw] h-[90vh] p-2">
           <div
             className="relative h-full flex items-center justify-center"
-            onClick={() => setShowGIFModal(false)}
+            onClick={handleRewardClose}
           >
             {revealInfo && (
               <div
@@ -477,11 +677,34 @@ export const BoardGame: React.FC = () => {
                   revealInfo.player === 1 ? 'bg-player-1' : 'bg-player-2'
                 )}
               >
-                {playerNames[revealInfo.player]} • Cell {revealInfo.cell}
+                {revealInfo.label ?? `${playerNames[revealInfo.player]}${revealInfo.cell !== null ? ` • Cell ${revealInfo.cell}` : ''}`}
               </div>
             )}
             <div className="text-center">
-              {isVideo(currentGIF) ? (
+              {revealInfo?.isItem ? (
+                <div
+                  className={cn(
+                    'rounded-full overflow-hidden border-4 w-[min(80vw,80vh)] h-[min(80vw,80vh)] mx-auto',
+                    revealInfo.player === 1 ? 'border-player-1' : 'border-player-2'
+                  )}
+                >
+                  {isVideo(currentGIF) ? (
+                    <video
+                      src={currentGIF}
+                      autoPlay
+                      loop
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={currentGIF}
+                      alt="Item preview"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+              ) : isVideo(currentGIF) ? (
                 <video
                   src={currentGIF}
                   autoPlay
@@ -514,10 +737,16 @@ export const BoardGame: React.FC = () => {
           player={pickingAvatar}
           onSelect={(a) => {
             setAvatars(prev => ({ ...prev, [pickingAvatar]: a }));
+            setBoardAvatars(prev => ({ ...prev, [pickingAvatar]: boardAvatarUrl(a) }));
             setPlayerNames(prev => ({ ...prev, [pickingAvatar]: a.name }));
           }}
           onClose={() => setPickingAvatar(null)}
         />
+      )}
+
+      {/* Block interaction while a dice-face cross-out animation is playing */}
+      {gameState.isAnimatingCross && (
+        <div className="fixed inset-0 z-50 cursor-wait" aria-hidden="true" />
       )}
     </div>
   );

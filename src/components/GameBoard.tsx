@@ -1,7 +1,12 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Flag, ArrowUp, Dice6 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameState } from './BoardGame';
+
+// Total duration of the dice-face cross-out animation (two 0.28s strokes,
+// the second delayed by 0.28s) plus a small buffer. BoardGame waits this long
+// before resuming the move so the animation is never cut off.
+export const CROSS_ANIM_MS = 700;
 
 interface GameBoardProps {
   gameState: GameState;
@@ -9,9 +14,17 @@ interface GameBoardProps {
   onReplayReward: (cellNumber: number, player: 1 | 2) => void;
   onStartClick?: () => void;
   started?: boolean;
+  rollDisabled?: boolean;
   currentPlayerName?: string;
   player1Image: string;
   player2Image: string;
+  player1Name?: string;
+  player2Name?: string;
+  onAvatarPreview?: (player: 1 | 2) => void;
+  onItemPreview?: (player: 1 | 2, faceIndex: number, url: string) => void;
+  // 5 dice-face image URLs per player (index 0 = face "1"); null where missing.
+  player1Faces?: (string | null)[];
+  player2Faces?: (string | null)[];
 }
 
 type TokenStyle = {
@@ -32,11 +45,50 @@ const LAYOUT: number[][] = [
   [32, 31, 30, 29, 28, 27, 26, 25],
 ];
 
-export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onReplayReward, onStartClick, started, currentPlayerName, player1Image, player2Image }) => {
+export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onReplayReward, onStartClick, started, rollDisabled, currentPlayerName, player1Image, player2Image, player1Name, player2Name, onAvatarPreview, onItemPreview, player1Faces, player2Faces }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cellRefs = useRef<Record<string, HTMLElement | null>>({});
   const [p1Style, setP1Style] = useState<TokenStyle | null>(null);
   const [p2Style, setP2Style] = useState<TokenStyle | null>(null);
+
+  // Bump a counter when a side avatar image changes so its <img> remounts and
+  // replays the swap animation. Starts at 0 (no animation on first mount).
+  const sideImgRef = useRef<{ 1: string; 2: string }>({ 1: player1Image, 2: player2Image });
+  const [sideAnim, setSideAnim] = useState<{ 1: number; 2: number }>({ 1: 0, 2: 0 });
+  useEffect(() => {
+    if (sideImgRef.current[1] !== player1Image) {
+      sideImgRef.current[1] = player1Image;
+      setSideAnim((p) => ({ ...p, 1: p[1] + 1 }));
+    }
+    if (sideImgRef.current[2] !== player2Image) {
+      sideImgRef.current[2] = player2Image;
+      setSideAnim((p) => ({ ...p, 2: p[2] + 1 }));
+    }
+  }, [player1Image, player2Image]);
+
+  // Detect dice faces that flipped 0 -> 1 this turn and play the cross-draw
+  // animation on them. The set clears after the animation so the cross becomes
+  // a static "disabled" mark.
+  const prevTrackRef = useRef<{ 1: number[]; 2: number[] }>({
+    1: [...gameState.diceTrack[1]],
+    2: [...gameState.diceTrack[2]],
+  });
+  const [crossAnim, setCrossAnim] = useState<{ 1: number[]; 2: number[] }>({ 1: [], 2: [] });
+  useEffect(() => {
+    ([1, 2] as const).forEach((pl) => {
+      const prev = prevTrackRef.current[pl];
+      const cur = gameState.diceTrack[pl];
+      const newly = cur.reduce<number[]>((acc, v, i) => {
+        if (v === 1 && prev[i] !== 1) acc.push(i);
+        return acc;
+      }, []);
+      prevTrackRef.current[pl] = [...cur];
+      if (newly.length) {
+        setCrossAnim((s) => ({ ...s, [pl]: newly }));
+        setTimeout(() => setCrossAnim((s) => ({ ...s, [pl]: [] })), CROSS_ANIM_MS);
+      }
+    });
+  }, [gameState.diceTrack]);
 
   const getZoneClass = (cellNumber: number) => {
     if (cellNumber <= 10) return 'bg-gradient-zone-1';
@@ -237,8 +289,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
             alt={`Player ${player}`}
             width={128}
             height={128}
+            onClick={(e) => { e.stopPropagation(); onAvatarPreview?.(player); }}
             className={cn(
-              'w-[75%] h-[75%] object-contain drop-shadow-lg',
+              'w-[75%] h-[75%] object-contain drop-shadow-lg pointer-events-auto cursor-pointer hover:scale-105 transition-transform',
               player === 1
                 ? 'drop-shadow-[0_4px_6px_hsl(var(--player-1)/0.6)]'
                 : 'drop-shadow-[0_4px_6px_hsl(var(--player-2)/0.6)]'
@@ -249,18 +302,122 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
     );
   };
 
+  const renderSideAvatar = (player: 1 | 2) => {
+    const img = player === 1 ? player1Image : player2Image;
+    const name = (player === 1 ? player1Name : player2Name) ?? `Player ${player}`;
+    const anim = sideAnim[player];
+    const faces = (player === 1 ? player1Faces : player2Faces) ?? [];
+    const track = gameState.diceTrack[player];
+    const animating = crossAnim[player];
+    const hasFaces = faces.some(Boolean);
+    return (
+      <div className="flex shrink-0 flex-col items-center gap-3 w-24 sm:w-36 md:w-48">
+        <button
+          type="button"
+          onClick={() => onAvatarPreview?.(player)}
+          aria-label={`Preview ${name}`}
+          title={name}
+          className="cursor-pointer transition-transform hover:scale-105"
+          style={{ perspective: '600px' }}
+        >
+          <img
+            key={anim}
+            src={img}
+            alt={name}
+            className={cn(
+              'w-24 sm:w-36 md:w-48 h-auto object-contain select-none',
+              anim > 0 && 'animate-avatar-swap'
+            )}
+          />
+        </button>
+
+        {hasFaces && (() => {
+          const items = faces
+            .map((url, i) => ({ url, i }))
+            .filter((it): it is { url: string; i: number } => Boolean(it.url));
+          return (
+            <div className="flex flex-col items-center gap-1.5 w-full">
+              <span className="text-[11px] sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Items
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {items.map((it, idx) => {
+                  const crossed = track[it.i] === 1;
+                  const isAnimating = animating.includes(it.i);
+                  // Center a lone trailing item when the count is odd.
+                  const lonely = idx === items.length - 1 && items.length % 2 === 1;
+                  return (
+                    <div
+                      key={it.i}
+                      className={cn('flex flex-col items-center gap-0.5', lonely && 'col-span-2')}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => onItemPreview?.(player, it.i, it.url)}
+                        aria-label={`Preview item ${it.i + 1}`}
+                        className="relative w-10 sm:w-14 md:w-16 aspect-square cursor-pointer transition-transform hover:scale-110"
+                      >
+                        <img
+                          src={it.url}
+                          alt={`Item ${it.i + 1}`}
+                          className={cn(
+                            'w-full h-full object-contain rounded-full ring-1 ring-border transition-opacity duration-300 select-none',
+                            crossed ? 'opacity-40' : 'opacity-100'
+                          )}
+                        />
+                        {crossed && (
+                          <svg
+                            viewBox="0 0 100 100"
+                            className="pointer-events-none absolute inset-0 h-full w-full"
+                            aria-hidden="true"
+                          >
+                            <line
+                              x1="20" y1="20" x2="80" y2="80"
+                              stroke="rgb(239 68 68)" strokeWidth="12" strokeLinecap="round"
+                              className={cn(isAnimating && 'cross-stroke')}
+                            />
+                            <line
+                              x1="80" y1="20" x2="20" y2="80"
+                              stroke="rgb(239 68 68)" strokeWidth="12" strokeLinecap="round"
+                              className={cn(isAnimating && 'cross-stroke cross-stroke-2')}
+                            />
+                          </svg>
+                        )}
+                      </button>
+                      <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">
+                        {it.i + 1}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  };
+
   return (
-    <div className="p-6">
-      <div ref={containerRef} className="relative">
+    <div className="p-2 sm:p-3">
+      <div className="flex items-center justify-center gap-3 sm:gap-5 md:gap-8">
+        {renderSideAvatar(1)}
+        <div ref={containerRef} className="relative flex-1 min-w-0">
         {/* Start gate (pre-board home) */}
         <div className="mb-3 flex justify-center">
           <button
             type="button"
             ref={(el) => (cellRefs.current['START'] = el)}
             onClick={() => onStartClick?.()}
+            disabled={rollDisabled}
             aria-label={started ? 'Roll dice' : 'Start'}
             title={started ? 'Roll dice' : 'Start'}
-            className="relative h-24 w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center cursor-pointer transition-all hover:bg-emerald-500/20 hover:border-emerald-400 active:scale-95"
+            className={cn(
+              'relative h-24 w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center transition-all',
+              rollDisabled
+                ? 'opacity-40 cursor-not-allowed'
+                : 'cursor-pointer hover:bg-emerald-500/20 hover:border-emerald-400 active:scale-95'
+            )}
           >
             <div className="flex flex-col items-center gap-1 text-xs font-semibold text-emerald-400">
               {currentPlayerName && (
@@ -272,9 +429,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
           </button>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {LAYOUT.map((row, ri) => (
-            <div key={ri} className="grid grid-cols-8 gap-2">
+            <div key={ri} className="grid grid-cols-8 gap-3">
               {row.map((slot, ci) => (
                 <React.Fragment key={ci}>{renderCell(slot)}</React.Fragment>
               ))}
@@ -285,6 +442,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
 
         {renderToken(1, p1Style, player1Image)}
         {renderToken(2, p2Style, player2Image)}
+        </div>
+        {renderSideAvatar(2)}
       </div>
     </div>
   );
