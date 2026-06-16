@@ -55,6 +55,15 @@ export const progressionImageFor = (
   bits: string
 ): string | null => progressionMap[`${gender}/${name}/${bits}`] ?? null;
 
+// The board (token + side flanks) shows the progression image starting at the
+// initial "00000" bit-string (e.g. male/Albatros/00000.png). If that image is
+// missing, fall back to the flat portrait (male/Albatros.png). The players
+// component and the picker keep the flat portrait itself.
+export const INITIAL_BITS = '00000';
+
+export const boardAvatarUrl = (av: Avatar): string =>
+  progressionImageFor(av.gender, av.name, INITIAL_BITS) ?? av.url;
+
 export const defaultAvatarFor = (player: 1 | 2): Avatar => {
   const fallback = player === 1 ? maleAvatars[0] : femaleAvatars[0];
   return fallback ?? allAvatars[0];

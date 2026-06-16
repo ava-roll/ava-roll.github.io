@@ -14,6 +14,7 @@ interface GameBoardProps {
   onReplayReward: (cellNumber: number, player: 1 | 2) => void;
   onStartClick?: () => void;
   started?: boolean;
+  rollDisabled?: boolean;
   currentPlayerName?: string;
   player1Image: string;
   player2Image: string;
@@ -44,7 +45,7 @@ const LAYOUT: number[][] = [
   [32, 31, 30, 29, 28, 27, 26, 25],
 ];
 
-export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onReplayReward, onStartClick, started, currentPlayerName, player1Image, player2Image, player1Name, player2Name, onAvatarPreview, onItemPreview, player1Faces, player2Faces }) => {
+export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onReplayReward, onStartClick, started, rollDisabled, currentPlayerName, player1Image, player2Image, player1Name, player2Name, onAvatarPreview, onItemPreview, player1Faces, player2Faces }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cellRefs = useRef<Record<string, HTMLElement | null>>({});
   const [p1Style, setP1Style] = useState<TokenStyle | null>(null);
@@ -404,9 +405,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
             type="button"
             ref={(el) => (cellRefs.current['START'] = el)}
             onClick={() => onStartClick?.()}
+            disabled={rollDisabled}
             aria-label={started ? 'Roll dice' : 'Start'}
             title={started ? 'Roll dice' : 'Start'}
-            className="relative h-24 w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center cursor-pointer transition-all hover:bg-emerald-500/20 hover:border-emerald-400 active:scale-95"
+            className={cn(
+              'relative h-24 w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center transition-all',
+              rollDisabled
+                ? 'opacity-40 cursor-not-allowed'
+                : 'cursor-pointer hover:bg-emerald-500/20 hover:border-emerald-400 active:scale-95'
+            )}
           >
             <div className="flex flex-col items-center gap-1 text-xs font-semibold text-emerald-400">
               {currentPlayerName && (
