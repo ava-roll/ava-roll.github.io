@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { sounds } from '@/lib/sounds';
 import { isVideo } from '@/lib/media';
 import { cn } from '@/lib/utils';
-import { AvatarPicker, defaultAvatarFor, progressionImageFor, boardAvatarUrl, type Avatar } from './AvatarPicker';
+import { AvatarPicker, defaultAvatarFor, progressionImageFor, itemFor, boardAvatarUrl, type Avatar } from './AvatarPicker';
 import { WinSplash } from './WinSplash';
 
 // Auto-load media per cell from src/assets/gifs/player{1,2}/cell{N}/*
@@ -139,7 +139,7 @@ export const BoardGame: React.FC = () => {
   // dice value here; the move runs only once every collected-item preview has
   // been dismissed.
   const [pendingMoveSteps, setPendingMoveSteps] = useState<number | null>(null);
-  const [itemQueue, setItemQueue] = useState<Array<{ player: 1 | 2; faceIndex: number; url: string }>>([]);
+  const [itemQueue, setItemQueue] = useState<Array<{ player: 1 | 2; faceIndex: number; url: string; name: string | null }>>([]);
 
   // Win splash is dismissed once the winner taps "Get Reward"; the board (and
   // its reward-collection stacks) then stays available for revisiting.
@@ -238,8 +238,11 @@ export const BoardGame: React.FC = () => {
     const collectedItems = track
       .map((v, i) => (v === 1 && prevTrack[i] !== 1 ? i : -1))
       .filter(i => i >= 0)
-      .map(i => ({ player, faceIndex: i, url: progressionImageFor(av.gender, av.name, String(i + 1)) }))
-      .filter((it): it is { player: 1 | 2; faceIndex: number; url: string } => !!it.url);
+      .map(i => {
+        const item = itemFor(av.gender, av.name, i + 1);
+        return item ? { player, faceIndex: i, url: item.url, name: item.name } : null;
+      })
+      .filter((it): it is { player: 1 | 2; faceIndex: number; url: string; name: string | null } => !!it);
 
     // After the cross animation, preview each collected item; the move runs
     // only once every preview is dismissed. With no previewable item we move
@@ -249,7 +252,7 @@ export const BoardGame: React.FC = () => {
         setPendingMoveSteps(value);
         const [first, ...rest] = collectedItems;
         setItemQueue(rest);
-        showItemCollected(first.player, first.faceIndex, first.url);
+        showItemCollected(first.player, first.faceIndex, first.url, first.name);
       } else {
         movePlayer(value);
       }
@@ -269,9 +272,10 @@ export const BoardGame: React.FC = () => {
   };
 
   // Show the "item collected" preview (player-colored circle) for a face.
-  const showItemCollected = (player: 1 | 2, faceIndex: number, url: string) => {
+  const showItemCollected = (player: 1 | 2, faceIndex: number, url: string, name: string | null) => {
     setCurrentGIF(url);
-    setRevealInfo({ player, cell: null, label: `Item Nr ${faceIndex + 1} was collected`, isItem: true });
+    const label = `Item Nr ${faceIndex + 1}${name ? ` - ${name}` : ''} was collected`;
+    setRevealInfo({ player, cell: null, label, isItem: true });
     setReplayMode(true);
     setShowGIFModal(true);
     sounds.reveal();
@@ -386,10 +390,11 @@ export const BoardGame: React.FC = () => {
     setShowGIFModal(true);
   };
 
-  const previewItem = (player: 1 | 2, faceIndex: number, url: string) => {
+  const previewItem = (player: 1 | 2, faceIndex: number, url: string, name: string | null) => {
     sounds.click();
     setCurrentGIF(url);
-    setRevealInfo({ player, cell: null, label: `${avatars[player].name}'s item Nr ${faceIndex + 1}`, isItem: true });
+    const label = `${avatars[player].name}'s item Nr ${faceIndex + 1}${name ? ` - ${name}` : ''}`;
+    setRevealInfo({ player, cell: null, label, isItem: true });
     setReplayMode(true);
     setShowGIFModal(true);
   };
@@ -429,7 +434,7 @@ export const BoardGame: React.FC = () => {
       if (itemQueue.length > 0) {
         const [next, ...rest] = itemQueue;
         setItemQueue(rest);
-        showItemCollected(next.player, next.faceIndex, next.url);
+        showItemCollected(next.player, next.faceIndex, next.url, next.name);
         return;
       }
       const steps = pendingMoveSteps;
@@ -606,8 +611,8 @@ export const BoardGame: React.FC = () => {
             player2Name={playerNames[2]}
             onAvatarPreview={previewAvatar}
             onItemPreview={previewItem}
-            player1Faces={[1, 2, 3, 4, 5].map(n => progressionImageFor(avatars[1].gender, avatars[1].name, String(n)))}
-            player2Faces={[1, 2, 3, 4, 5].map(n => progressionImageFor(avatars[2].gender, avatars[2].name, String(n)))}
+            player1Faces={[1, 2, 3, 4, 5].map(n => { const it = itemFor(avatars[1].gender, avatars[1].name, n); return { url: it?.url ?? null, name: it?.name ?? null }; })}
+            player2Faces={[1, 2, 3, 4, 5].map(n => { const it = itemFor(avatars[2].gender, avatars[2].name, n); return { url: it?.url ?? null, name: it?.name ?? null }; })}
           />
         </Card>
 
@@ -684,7 +689,7 @@ export const BoardGame: React.FC = () => {
               {revealInfo?.isItem ? (
                 <div
                   className={cn(
-                    'rounded-full overflow-hidden border-4 w-[min(80vw,80vh)] h-[min(80vw,80vh)] mx-auto',
+                    'rounded-full overflow-hidden border-4 w-[min(64vw,64vh)] h-[min(64vw,64vh)] mx-auto',
                     revealInfo.player === 1 ? 'border-player-1' : 'border-player-2'
                   )}
                 >

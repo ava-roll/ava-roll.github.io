@@ -21,10 +21,10 @@ interface GameBoardProps {
   player1Name?: string;
   player2Name?: string;
   onAvatarPreview?: (player: 1 | 2) => void;
-  onItemPreview?: (player: 1 | 2, faceIndex: number, url: string) => void;
-  // 5 dice-face image URLs per player (index 0 = face "1"); null where missing.
-  player1Faces?: (string | null)[];
-  player2Faces?: (string | null)[];
+  onItemPreview?: (player: 1 | 2, faceIndex: number, url: string, name: string | null) => void;
+  // 5 dice-face items per player (index 0 = face "1"); url is null where missing.
+  player1Faces?: Array<{ url: string | null; name: string | null }>;
+  player2Faces?: Array<{ url: string | null; name: string | null }>;
 }
 
 type TokenStyle = {
@@ -309,7 +309,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
     const faces = (player === 1 ? player1Faces : player2Faces) ?? [];
     const track = gameState.diceTrack[player];
     const animating = crossAnim[player];
-    const hasFaces = faces.some(Boolean);
+    const hasFaces = faces.some(f => f.url);
     return (
       <div className="flex shrink-0 flex-col items-center gap-3 w-24 sm:w-36 md:w-48">
         <button
@@ -333,8 +333,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
 
         {hasFaces && (() => {
           const items = faces
-            .map((url, i) => ({ url, i }))
-            .filter((it): it is { url: string; i: number } => Boolean(it.url));
+            .map((f, i) => ({ url: f.url, name: f.name, i }))
+            .filter((it): it is { url: string; name: string | null; i: number } => Boolean(it.url));
           return (
             <div className="flex flex-col items-center gap-1.5 w-full">
               <span className="text-[11px] sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -353,8 +353,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
                     >
                       <button
                         type="button"
-                        onClick={() => onItemPreview?.(player, it.i, it.url)}
-                        aria-label={`Preview item ${it.i + 1}`}
+                        onClick={() => onItemPreview?.(player, it.i, it.url, it.name)}
+                        aria-label={`Preview item ${it.i + 1}${it.name ? ` - ${it.name}` : ''}`}
                         className="relative w-10 sm:w-14 md:w-16 aspect-square cursor-pointer transition-transform hover:scale-110"
                       >
                         <img
@@ -384,8 +384,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
                           </svg>
                         )}
                       </button>
-                      <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">
-                        {it.i + 1}
+                      <span className="text-[10px] sm:text-xs font-medium text-muted-foreground text-center leading-tight">
+                        {it.i + 1}{it.name ? ` - ${it.name}` : ''}
                       </span>
                     </div>
                   );
