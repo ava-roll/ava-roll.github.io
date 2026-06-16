@@ -55,6 +55,33 @@ export const progressionImageFor = (
   bits: string
 ): string | null => progressionMap[`${gender}/${name}/${bits}`] ?? null;
 
+// Item images live in the same per-character folder, named either "<n>.<ext>"
+// or "<n>-<Name>.<ext>" (e.g. male/Albatros/3-Bell.png), where <n> is the dice
+// face 1-5 and the optional <Name> is shown on the item preview. Keyed
+// "gender/name/n". The 5-char progression bit-strings (e.g. 01001) don't match
+// the single-digit pattern, so they're naturally excluded here.
+export type Item = { url: string; name: string | null };
+
+const itemMap: Record<string, Item> = {};
+for (const [path, url] of Object.entries(progressionModules)) {
+  const parts = path.split('/');
+  const file = parts.pop() || '';
+  const charName = parts.pop() || '';
+  const gender = parts.pop() || '';
+  const stem = file.replace(/\.[^.]+$/, '');
+  const m = stem.match(/^([1-5])(?:-(.+))?$/);
+  if (!m) continue;
+  itemMap[`${gender}/${charName}/${m[1]}`] = { url, name: m[2] ?? null };
+}
+
+// Returns the item image + optional display name for a character's dice face
+// (1-5), or null if no such file exists.
+export const itemFor = (
+  gender: Gender,
+  name: string,
+  num: number
+): Item | null => itemMap[`${gender}/${name}/${num}`] ?? null;
+
 // The board (token + side flanks) shows the progression image starting at the
 // initial "00000" bit-string (e.g. male/Albatros/00000.png). If that image is
 // missing, fall back to the flat portrait (male/Albatros.png). The players
