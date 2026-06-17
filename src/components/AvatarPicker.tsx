@@ -61,7 +61,7 @@ export const progressionImageFor = (
 // "gender/name/n". The 5-char progression bit-strings (e.g. 01001) don't match
 // the single-digit pattern, so they're naturally excluded here.
 export type Item = { url: string; name: string | null };
-
+const itemRoot = `Items`;
 const itemMap: Record<string, Item> = {};
 for (const [path, url] of Object.entries(progressionModules)) {
   const parts = path.split('/');
@@ -71,16 +71,15 @@ for (const [path, url] of Object.entries(progressionModules)) {
   const stem = file.replace(/\.[^.]+$/, '');
   const m = stem.match(/^([1-5])(?:-(.+))?$/);
   if (!m) continue;
-  itemMap[`${gender}/${charName}/${m[1]}`] = { url, name: m[2] ?? null };
+  itemMap[`${gender}/${itemRoot}/${m[1]}`] = { url, name: m[2] ?? null };
 }
 
 // Returns the item image + optional display name for a character's dice face
 // (1-5), or null if no such file exists.
 export const itemFor = (
   gender: Gender,
-  name: string,
   num: number
-): Item | null => itemMap[`${gender}/${name}/${num}`] ?? null;
+): Item | null => itemMap[`${gender}/${itemRoot}/${num}`] ?? null;
 
 // The board (token + side flanks) shows the progression image starting at the
 // initial "00000" bit-string (e.g. male/Albatros/00000.png). If that image is

@@ -611,8 +611,8 @@ export const BoardGame: React.FC = () => {
             player2Name={playerNames[2]}
             onAvatarPreview={previewAvatar}
             onItemPreview={previewItem}
-            player1Faces={[1, 2, 3, 4, 5].map(n => { const it = itemFor(avatars[1].gender, avatars[1].name, n); return { url: it?.url ?? null, name: it?.name ?? null }; })}
-            player2Faces={[1, 2, 3, 4, 5].map(n => { const it = itemFor(avatars[2].gender, avatars[2].name, n); return { url: it?.url ?? null, name: it?.name ?? null }; })}
+            player1Faces={[1, 2, 3, 4, 5].map(n => { const it = itemFor(avatars[1].gender, n); return { url: it?.url ?? null, name: it?.name ?? null }; })}
+            player2Faces={[1, 2, 3, 4, 5].map(n => { const it = itemFor(avatars[2].gender, n); return { url: it?.url ?? null, name: it?.name ?? null }; })}
           />
         </Card>
 
