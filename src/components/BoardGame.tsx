@@ -64,6 +64,12 @@ const SHORTCUTS = {
 
 const DICE_ICONS = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
 
+// Time Constants
+const ROLL_DURATION_MS = 800;
+const REVEAL_GIF_DELAY = 500;
+const STEP_MS = 250;
+const PAUSE_MS = 600;
+
 const getMediaForCell = (player: 1 | 2, cellNumber: number): string[] => {
   const map = player === 1 ? player1CellMap : player2CellMap;
   const fallback = player === 1 ? player1Default : player2Default;
@@ -173,7 +179,7 @@ export const BoardGame: React.FC = () => {
       setPendingDice(finalValue);
       setDiceSettled(true);
       setGameState(prev => ({ ...prev, isRolling: false }));
-    }, 1200);
+    }, ROLL_DURATION_MS);
   };
 
   const confirmDice = () => {
@@ -291,17 +297,19 @@ export const BoardGame: React.FC = () => {
     setGameState(prev => ({ ...prev, isMoving: true, [nextField]: null }));
     sounds.move();
 
-    const STEP_MS = 300;
-
     const finish = (landed: number) => {
       const winner: 1 | 2 | null = landed >= BOARD_SIZE ? currentPlayer : null;
       const shortcut = !winner ? (SHORTCUTS[landed as keyof typeof SHORTCUTS] ?? null) : null;
-      setGameState(prev => ({
-        ...prev,
-        isMoving: false,
-        gameWinner: winner,
-        [nextField]: shortcut,
-      }));
+      setTimeout(() => {
+        setGameState(prev => ({
+          ...prev,
+          isMoving: false,
+          gameWinner: winner,
+          [nextField]: shortcut,
+        }));
+      }, PAUSE_MS);
+
+
       if (winner) { sounds.win(); return; }
       revealGIF(landed, currentPlayer);
       if (shortcut !== null) {
@@ -377,7 +385,7 @@ export const BoardGame: React.FC = () => {
       setTimeout(() => {
         setShowGIFModal(true);
         sounds.reveal();
-      }, 750);
+      }, REVEAL_GIF_DELAY);
       return newState;
     });
   };
