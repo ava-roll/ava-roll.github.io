@@ -245,7 +245,7 @@ export const BoardGame: React.FC = () => {
       .map((v, i) => (v === 1 && prevTrack[i] !== 1 ? i : -1))
       .filter(i => i >= 0)
       .map(i => {
-        const item = itemFor(av.gender, av.name, i + 1);
+        const item = itemFor(av.gender, i + 1);
         return item ? { player, faceIndex: i, url: item.url, name: item.name } : null;
       })
       .filter((it): it is { player: 1 | 2; faceIndex: number; url: string; name: string | null } => !!it);
