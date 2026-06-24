@@ -12,6 +12,7 @@ import { isVideo } from '@/lib/media';
 import { cn } from '@/lib/utils';
 import { AvatarPicker, defaultAvatarFor, progressionImageFor, itemFor, boardAvatarUrl, type Avatar } from './AvatarPicker';
 import { WinSplash } from './WinSplash';
+import { DisclaimerScreen, DISCLAIMER_STORAGE_KEY } from './DisclaimerScreen';
 
 // Auto-load media per cell from src/assets/gifs/player{1,2}/cell{N}/*
 // Plus a default fallback per player at src/assets/gifs/player{1,2}/default.*
@@ -102,6 +103,27 @@ export interface GameState {
 
 export const BoardGame: React.FC = () => {
   const { toast } = useToast();
+
+  // Disclaimer shown on first open only; acceptance is cached in localStorage
+  // so returning visitors skip it.
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(DISCLAIMER_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const acceptDisclaimer = () => {
+    sounds.click();
+    try {
+      localStorage.setItem(DISCLAIMER_STORAGE_KEY, 'true');
+    } catch {
+      // Ignore storage failures (e.g. private mode); the game still opens.
+    }
+    setDisclaimerAccepted(true);
+  };
+
   const [gameState, setGameState] = useState<GameState>({
     currentPlayer: 1,
     player1Position: 0,
@@ -761,6 +783,9 @@ export const BoardGame: React.FC = () => {
       {gameState.isAnimatingCross && (
         <div className="fixed inset-0 z-50 cursor-wait" aria-hidden="true" />
       )}
+
+      {/* First-open disclaimer; acceptance is cached so it shows only once */}
+      {!disclaimerAccepted && <DisclaimerScreen onAccept={acceptDisclaimer} />}
     </div>
   );
 };
