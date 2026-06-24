@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { AvatarPicker, defaultAvatarFor, progressionImageFor, itemFor, boardAvatarUrl, type Avatar } from './AvatarPicker';
 import { WinSplash } from './WinSplash';
 import { DisclaimerScreen, DISCLAIMER_STORAGE_KEY } from './DisclaimerScreen';
+import { InfoToggle, InfoBubble, INFO_TEXT } from './InfoBubbles';
 
 // Auto-load media per cell from src/assets/gifs/player{1,2}/cell{N}/*
 // Plus a default fallback per player at src/assets/gifs/player{1,2}/default.*
@@ -154,6 +155,10 @@ export const BoardGame: React.FC = () => {
     }
     setDisclaimerAccepted(true);
   };
+
+  // Steps through the help bubbles one at a time on each tap of the info button:
+  // 0 = none, 1 = title, 2 = start/roll button, 3 = Items, then back to 0.
+  const [infoStep, setInfoStep] = useState(0);
 
   const [gameState, setGameState] = useState<GameState>({
     currentPlayer: 1,
@@ -661,9 +666,13 @@ export const BoardGame: React.FC = () => {
     <div className="min-h-screen bg-background p-2 sm:p-3">
       <div className="max-w-[1700px] mx-auto">
         <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-foreground mb-2">
-            Board Game Adventure
-          </h1>
+          <div className="relative inline-flex items-center gap-2 mb-2">
+            <h1 className="text-4xl font-bold text-foreground">
+              Board Game Adventure
+            </h1>
+            <InfoToggle active={infoStep > 0} onClick={() => { sounds.click(); setInfoStep(s => (s + 1) % 4); }} />
+            <InfoBubble show={infoStep === 1} text={INFO_TEXT.game} below className="w-80" />
+          </div>
           <p className="text-muted-foreground">
             Roll the dice, collect GIFs, and race to the finish!
           </p>
@@ -680,6 +689,7 @@ export const BoardGame: React.FC = () => {
           <GameBoard
             gameState={gameState}
             shortcuts={SHORTCUTS}
+            infoStep={infoStep}
             onReplayReward={replayReward}
             onStartClick={rollDice}
             started={gameState.player1Position > 0 || gameState.player2Position > 0}

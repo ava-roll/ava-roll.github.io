@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Flag, ArrowUp, Dice6 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameState } from './BoardGame';
+import { InfoBubble, INFO_TEXT } from './InfoBubbles';
 
 // Total duration of the dice-face cross-out animation (two 0.28s strokes,
 // the second delayed by 0.28s) plus a small buffer. BoardGame waits this long
@@ -11,6 +12,8 @@ export const CROSS_ANIM_MS = 700;
 interface GameBoardProps {
   gameState: GameState;
   shortcuts: { [key: number]: number };
+  // Current help-bubble step (0 = none, 2 = start button, 3 = Items); driven by the info button.
+  infoStep?: number;
   onReplayReward: (cellNumber: number, player: 1 | 2) => void;
   onStartClick?: () => void;
   started?: boolean;
@@ -45,7 +48,7 @@ const LAYOUT: number[][] = [
   [32, 31, 30, 29, 28, 27, 26, 25],
 ];
 
-export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onReplayReward, onStartClick, started, rollDisabled, currentPlayerName, player1Image, player2Image, player1Name, player2Name, onAvatarPreview, onItemPreview, player1Faces, player2Faces }) => {
+export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, infoStep, onReplayReward, onStartClick, started, rollDisabled, currentPlayerName, player1Image, player2Image, player1Name, player2Name, onAvatarPreview, onItemPreview, player1Faces, player2Faces }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cellRefs = useRef<Record<string, HTMLElement | null>>({});
   const [p1Style, setP1Style] = useState<TokenStyle | null>(null);
@@ -337,8 +340,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
             .filter((it): it is { url: string; name: string | null; i: number } => Boolean(it.url));
           return (
             <div className="flex flex-col items-center gap-1.5 w-full">
-              <span className="text-[11px] sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="relative text-[11px] sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Items
+                <InfoBubble show={infoStep === 3} text={INFO_TEXT.items} />
               </span>
               <div className="grid grid-cols-2 gap-2">
                 {items.map((it, idx) => {
@@ -405,6 +409,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
         <div ref={containerRef} className="relative flex-1 min-w-0">
         {/* Start gate (pre-board home) */}
         <div className="mb-3 flex justify-center">
+          <div className="relative">
+            <InfoBubble show={infoStep === 2} text={INFO_TEXT.dice} />
           <button
             type="button"
             ref={(el) => (cellRefs.current['START'] = el)}
@@ -427,6 +433,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, onRe
               <span>{started ? 'ROLL DICE' : 'START'}</span>
             </div>
           </button>
+          </div>
         </div>
 
         <div className="space-y-3">
