@@ -46,8 +46,26 @@ const groupByCell = (modules: Record<string, string>): Record<number, string[]> 
   return out;
 };
 
+// A cell can have per-extra-step variant folders: cell{N}-0 .. cell{N}-5, where
+// the suffix is how many steps the dice roll overshot that cell by. (Used for the
+// last/finish cell, but works for any cell number.) These don't match the plain
+// /cellN/ regex above, so we group them separately, keyed by cell then by extra.
+const groupByCellVariant = (modules: Record<string, string>): Record<number, Record<number, string[]>> => {
+  const out: Record<number, Record<number, string[]>> = {};
+  for (const [path, url] of Object.entries(modules)) {
+    const m = path.match(/\/cell(\d+)-(\d+)\//i);
+    if (!m) continue;
+    const cell = parseInt(m[1], 10);
+    const extra = parseInt(m[2], 10);
+    ((out[cell] ||= {})[extra] ||= []).push(url);
+  }
+  return out;
+};
+
 const player1CellMap = groupByCell(player1CellModules);
 const player2CellMap = groupByCell(player2CellModules);
+const player1CellVariantMap = groupByCellVariant(player1CellModules);
+const player2CellVariantMap = groupByCellVariant(player2CellModules);
 const player1Default = Object.values(player1DefaultModules)[0] ?? '';
 const player2Default = Object.values(player2DefaultModules)[0] ?? '';
 
@@ -78,6 +96,17 @@ const getMediaForCell = (player: 1 | 2, cellNumber: number): string[] => {
   return fallback ? [fallback] : [];
 };
 
+// Reward media for landing on a cell, picked from its cell{N}-{extra} variant
+// folder for the number of extra steps the roll overshot by (0-5). Falls back to
+// the plain cell{N} folder (and then the per-player default) when that variant
+// folder is empty/missing.
+const getMediaForCellVariant = (player: 1 | 2, cellNumber: number, extraSteps: number): string[] => {
+  const variantMap = player === 1 ? player1CellVariantMap : player2CellVariantMap;
+  const files = variantMap[cellNumber]?.[extraSteps];
+  if (files && files.length > 0) return files;
+  return getMediaForCell(player, cellNumber);
+};
+
 export interface GameState {
   currentPlayer: 1 | 2;
   player1Position: number;
@@ -88,8 +117,10 @@ export interface GameState {
   isRolling: boolean;
   isMoving: boolean;
   gameWinner: 1 | 2 | null;
-  player1Stack: Array<{ gif: string; cellNumber: number }>;
-  player2Stack: Array<{ gif: string; cellNumber: number }>;
+  // `label` overrides the displayed cell name (used for finish-cell variants,
+  // e.g. "32-2"); plain cells leave it undefined and fall back to cellNumber.
+  player1Stack: Array<{ gif: string; cellNumber: number; label?: string }>;
+  player2Stack: Array<{ gif: string; cellNumber: number; label?: string }>;
   revealedGIFs: { [key: string]: string };
   tokenScale: { 1: number; 2: number };
   // Per-player dice-tracking: 5-element array (faces 1-5), index (n-1) flips to
@@ -297,7 +328,7 @@ export const BoardGame: React.FC = () => {
     setGameState(prev => ({ ...prev, isMoving: true, [nextField]: null }));
     sounds.move();
 
-    const finish = (landed: number) => {
+    const finish = (landed: number, extraSteps: number) => {
       const winner: 1 | 2 | null = landed >= BOARD_SIZE ? currentPlayer : null;
       const shortcut = !winner ? (SHORTCUTS[landed as keyof typeof SHORTCUTS] ?? null) : null;
       setTimeout(() => {
@@ -310,7 +341,13 @@ export const BoardGame: React.FC = () => {
       }, PAUSE_MS);
 
 
-      if (winner) { sounds.win(); return; }
+      if (winner) {
+        sounds.win();
+        // Reveal the finish reward from the cell32-{extraSteps} folder and add it
+        // to the stack, but defer the modal: the WinSplash's "Get Reward" replays it.
+        revealGIF(landed, currentPlayer, { extraSteps, deferModal: true });
+        return;
+      }
       revealGIF(landed, currentPlayer);
       if (shortcut !== null) {
         sounds.shortcut();
@@ -323,15 +360,17 @@ export const BoardGame: React.FC = () => {
 
     const startStepping = (from: number, count: number) => {
       const targetPos = Math.min(from + count, BOARD_SIZE);
+      // How many steps the roll overshot the finish cell by (0 when it doesn't reach).
+      const extraSteps = Math.max(0, from + count - BOARD_SIZE);
       const totalSteps = targetPos - from;
-      if (totalSteps <= 0) { finish(from); return; }
+      if (totalSteps <= 0) { finish(from, extraSteps); return; }
       let step = 0;
       const tick = () => {
         step++;
         const newPos = from + step;
         setGameState(prev => ({ ...prev, [posField]: newPos }));
         if (step < totalSteps) { setTimeout(tick, STEP_MS); return; }
-        finish(newPos);
+        finish(newPos, extraSteps);
       };
       setTimeout(tick, STEP_MS);
     };
@@ -358,12 +397,24 @@ export const BoardGame: React.FC = () => {
     }
   };
 
-  const revealGIF = (cellNumber: number, player: 1 | 2) => {
+  const revealGIF = (
+    cellNumber: number,
+    player: 1 | 2,
+    opts: { extraSteps?: number; deferModal?: boolean } = {}
+  ) => {
+    const { extraSteps, deferModal = false } = opts;
+    // When extraSteps is provided (landing on the finish cell), pull the reward
+    // from the per-extra-step folder and tag it "{cell}-{extra}" so the stack
+    // reads correctly after the game.
+    const useVariant = extraSteps != null;
+    const finishLabel = useVariant ? `${cellNumber}-${extraSteps}` : undefined;
     const key = `${player}_${cellNumber}`;
     setGameState(prev => {
       let gifUrl = prev.revealedGIFs[key];
       if (!gifUrl) {
-        const gifs = getMediaForCell(player, cellNumber);
+        const gifs = useVariant
+          ? getMediaForCellVariant(player, cellNumber, extraSteps)
+          : getMediaForCell(player, cellNumber);
         if (gifs.length === 0) return prev;
         const randomIndex = Math.floor(Math.random() * gifs.length);
         gifUrl = gifs[randomIndex];
@@ -372,7 +423,7 @@ export const BoardGame: React.FC = () => {
       const alreadyInStack = stack.some(item => item.cellNumber === cellNumber);
       let newStack = stack;
       if (!alreadyInStack) {
-        newStack = [...stack, { gif: gifUrl, cellNumber }];
+        newStack = [...stack, { gif: gifUrl, cellNumber, label: finishLabel }];
       }
       const newState = {
         ...prev,
@@ -380,12 +431,16 @@ export const BoardGame: React.FC = () => {
         [player === 1 ? 'player1Stack' : 'player2Stack']: newStack
       };
       setCurrentGIF(gifUrl);
-      setReplayMode(false);
-      setRevealInfo({ player, cell: cellNumber });
-      setTimeout(() => {
-        setShowGIFModal(true);
-        sounds.reveal();
-      }, REVEAL_GIF_DELAY);
+      // Deferred reveals (the win flow) leave the modal closed and rely on the
+      // WinSplash to replay; replayMode keeps the auto-advance effect from firing.
+      setReplayMode(deferModal);
+      setRevealInfo({ player, cell: cellNumber, label: finishLabel ? `${playerNames[player]} • Cell ${finishLabel}` : undefined });
+      if (!deferModal) {
+        setTimeout(() => {
+          setShowGIFModal(true);
+          sounds.reveal();
+        }, REVEAL_GIF_DELAY);
+      }
       return newState;
     });
   };
@@ -412,8 +467,10 @@ export const BoardGame: React.FC = () => {
     const url = gameState.revealedGIFs[key];
     if (!url) return;
     sounds.click();
+    const stack = player === 1 ? gameState.player1Stack : gameState.player2Stack;
+    const item = stack.find(i => i.cellNumber === cellNumber);
     setCurrentGIF(url);
-    setRevealInfo({ player, cell: cellNumber });
+    setRevealInfo({ player, cell: cellNumber, label: item?.label ? `${playerNames[player]} • Cell ${item.label}` : undefined });
     setReplayMode(true);
     setShowGIFModal(true);
   };
@@ -430,7 +487,7 @@ export const BoardGame: React.FC = () => {
     const last = stack[stack.length - 1];
     if (!last) return;
     setCurrentGIF(last.gif);
-    setRevealInfo({ player: winner, cell: last.cellNumber });
+    setRevealInfo({ player: winner, cell: last.cellNumber, label: last.label ? `${playerNames[winner]} • Cell ${last.label}` : undefined });
     setReplayMode(true);
     setShowGIFModal(true);
   };

@@ -5,14 +5,21 @@ import { X, ZoomIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isVideo } from '@/lib/media';
 
+interface StackItem {
+  gif: string;
+  cellNumber: number;
+  // Overrides the displayed cell name for finish-cell variants (e.g. "32-2").
+  label?: string;
+}
+
 interface ImageStackProps {
   player: 1 | 2;
-  stack: Array<{ gif: string; cellNumber: number }>;
+  stack: Array<StackItem>;
   onClose: () => void;
 }
 
 export const ImageStack: React.FC<ImageStackProps> = ({ player, stack, onClose }) => {
-  const [selectedImage, setSelectedImage] = useState<{ gif: string; cellNumber: number } | null>(null);
+  const [selectedImage, setSelectedImage] = useState<StackItem | null>(null);
 
   return (
     <>
@@ -56,7 +63,7 @@ export const ImageStack: React.FC<ImageStackProps> = ({ player, stack, onClose }
                     ) : (
                       <img
                         src={item.gif}
-                        alt={`Cell ${item.cellNumber}`}
+                        alt={`Cell ${item.label ?? item.cellNumber}`}
                         className="w-full aspect-square object-cover"
                       />
                     )}
@@ -71,7 +78,7 @@ export const ImageStack: React.FC<ImageStackProps> = ({ player, stack, onClose }
                       'absolute top-2 left-2 px-2 py-1 rounded text-xs font-bold text-white',
                       player === 1 ? 'bg-player-1' : 'bg-player-2'
                     )}>
-                      Cell {item.cellNumber}
+                      Cell {item.label ?? item.cellNumber}
                     </div>
                   </div>
                 ))}
@@ -99,7 +106,7 @@ export const ImageStack: React.FC<ImageStackProps> = ({ player, stack, onClose }
                 ) : (
                   <img
                     src={selectedImage.gif}
-                    alt={`Cell ${selectedImage.cellNumber}`}
+                    alt={`Cell ${selectedImage.label ?? selectedImage.cellNumber}`}
                     className="max-w-full max-h-[80vh] object-contain rounded-lg"
                   />
                 )}
@@ -108,7 +115,7 @@ export const ImageStack: React.FC<ImageStackProps> = ({ player, stack, onClose }
                     'inline-block px-4 py-2 rounded text-sm font-semibold text-white',
                     player === 1 ? 'bg-player-1' : 'bg-player-2'
                   )}>
-                    Collected from Cell {selectedImage.cellNumber}
+                    Collected from Cell {selectedImage.label ?? selectedImage.cellNumber}
                   </div>
                 </div>
               </div>
