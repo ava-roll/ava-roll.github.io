@@ -341,12 +341,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
             .map((f, i) => ({ url: f.url, name: f.name, i }))
             .filter((it): it is { url: string; name: string | null; i: number } => Boolean(it.url));
           return (
-            <div className="flex flex-col items-center gap-1.5 w-full">
-              <span className="relative text-[11px] sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="flex flex-col items-center gap-1 md:gap-1.5 w-full flex-1 md:flex-none">
+              <span className="relative text-[10px] sm:text-xs md:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Items
                 <InfoBubble show={infoStep === 3} text={INFO_TEXT.items} />
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-5 md:grid-cols-2 gap-1 md:gap-2 w-full md:w-auto">
+
                 {items.map((it, idx) => {
                   const crossed = track[it.i] === 1;
                   const isAnimating = animating.includes(it.i);
