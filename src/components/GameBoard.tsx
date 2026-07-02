@@ -306,104 +306,118 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
     );
   };
 
-  const renderSideAvatar = (player: 1 | 2) => {
+  const renderSideAvatarButton = (player: 1 | 2) => {
     const img = player === 1 ? player1Image : player2Image;
     const name = (player === 1 ? player1Name : player2Name) ?? `Player ${player}`;
     const anim = sideAnim[player];
+
+    return (
+      <button
+        type="button"
+        onClick={() => onAvatarPreview?.(player)}
+        aria-label={`Preview ${name}`}
+        title={name}
+        className="flex h-20 w-20 sm:h-32 sm:w-32 md:h-56 md:w-48 items-end justify-center cursor-pointer transition-transform hover:scale-105"
+        style={{ perspective: '600px' }}
+      >
+        <img
+          key={anim}
+          src={img}
+          alt={name}
+          className={cn(
+            'h-full w-full object-contain object-bottom select-none',
+            anim > 0 && 'animate-avatar-swap'
+          )}
+
+        />
+      </button>
+    );
+  };
+
+  const renderSideItems = (player: 1 | 2, mobile = false) => {
     const faces = (player === 1 ? player1Faces : player2Faces) ?? [];
     const track = gameState.diceTrack[player];
     const animating = crossAnim[player];
     const hasFaces = faces.some(f => f.url);
+
+    if (!hasFaces) return null;
+
+    const items = faces
+      .map((f, i) => ({ url: f.url, name: f.name, i }))
+      .filter((it): it is { url: string; name: string | null; i: number } => Boolean(it.url));
+
     return (
-      <div className="flex shrink-0 flex-row md:flex-col items-center gap-2 md:gap-3 w-full md:w-48 md:shrink-0">
+      <div className={cn(
+        'flex flex-col items-center gap-1 md:gap-1.5 w-full md:flex-none',
+        mobile ? 'max-w-[calc(50%_-_0.25rem)]' : 'flex-1'
+      )}>
+        <span className="relative text-[10px] sm:text-xs md:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Items
+          <InfoBubble show={infoStep === 3} text={INFO_TEXT.items} />
+        </span>
+        <div className="grid grid-cols-5 md:grid-cols-2 gap-1 md:gap-2 w-full md:w-auto">
 
-        <button
-          type="button"
-          onClick={() => onAvatarPreview?.(player)}
-          aria-label={`Preview ${name}`}
-          title={name}
-          className="cursor-pointer transition-transform hover:scale-105"
-          style={{ perspective: '600px' }}
-        >
-          <img
-            key={anim}
-            src={img}
-            alt={name}
-            className={cn(
-              'w-16 sm:w-28 md:w-48 h-auto object-contain select-none',
-              anim > 0 && 'animate-avatar-swap'
-            )}
+          {items.map((it, idx) => {
+            const crossed = track[it.i] === 1;
+            const isAnimating = animating.includes(it.i);
+            // Center a lone trailing item when the count is odd.
+            const lonely = idx === items.length - 1 && items.length % 2 === 1;
+            return (
+              <div
+                key={it.i}
+                className={cn('flex flex-col items-center gap-0.5', lonely && 'md:col-span-2')}
+              >
+                <button
+                  type="button"
+                  onClick={() => onItemPreview?.(player, it.i, it.url, it.name)}
+                  aria-label={`Preview item ${it.i + 1}${it.name ? ` - ${it.name}` : ''}`}
+                  className="relative w-full sm:w-12 md:w-16 aspect-square cursor-pointer transition-transform hover:scale-110"
+                >
 
-          />
-        </button>
-
-        {hasFaces && (() => {
-          const items = faces
-            .map((f, i) => ({ url: f.url, name: f.name, i }))
-            .filter((it): it is { url: string; name: string | null; i: number } => Boolean(it.url));
-          return (
-            <div className="flex flex-col items-center gap-1 md:gap-1.5 w-full flex-1 md:flex-none">
-              <span className="relative text-[10px] sm:text-xs md:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Items
-                <InfoBubble show={infoStep === 3} text={INFO_TEXT.items} />
-              </span>
-              <div className="grid grid-cols-5 md:grid-cols-2 gap-1 md:gap-2 w-full md:w-auto">
-
-                {items.map((it, idx) => {
-                  const crossed = track[it.i] === 1;
-                  const isAnimating = animating.includes(it.i);
-                  // Center a lone trailing item when the count is odd.
-                  const lonely = idx === items.length - 1 && items.length % 2 === 1;
-                  return (
-                    <div
-                      key={it.i}
-                      className={cn('flex flex-col items-center gap-0.5', lonely && 'md:col-span-2')}
+                  <img
+                    src={it.url}
+                    alt={`Item ${it.i + 1}`}
+                    className={cn(
+                      'w-full h-full object-contain rounded-full ring-1 ring-border transition-opacity duration-300 select-none',
+                      crossed ? 'opacity-40' : 'opacity-100'
+                    )}
+                  />
+                  {crossed && (
+                    <svg
+                      viewBox="0 0 100 100"
+                      className="pointer-events-none absolute inset-0 h-full w-full"
+                      aria-hidden="true"
                     >
-                      <button
-                        type="button"
-                        onClick={() => onItemPreview?.(player, it.i, it.url, it.name)}
-                        aria-label={`Preview item ${it.i + 1}${it.name ? ` - ${it.name}` : ''}`}
-                        className="relative w-full sm:w-12 md:w-16 aspect-square cursor-pointer transition-transform hover:scale-110"
-                      >
+                      <line
+                        x1="20" y1="20" x2="80" y2="80"
+                        stroke="rgb(239 68 68)" strokeWidth="12" strokeLinecap="round"
+                        className={cn(isAnimating && 'cross-stroke')}
+                      />
+                      <line
+                        x1="80" y1="20" x2="20" y2="80"
+                        stroke="rgb(239 68 68)" strokeWidth="12" strokeLinecap="round"
+                        className={cn(isAnimating && 'cross-stroke cross-stroke-2')}
+                      />
+                    </svg>
+                  )}
+                </button>
+                <span className="text-[8px] sm:text-[10px] md:text-xs font-medium text-muted-foreground text-center leading-tight truncate max-w-full">
+                  {it.i + 1}{it.name ? ` - ${it.name}` : ''}
+                </span>
 
-                        <img
-                          src={it.url}
-                          alt={`Item ${it.i + 1}`}
-                          className={cn(
-                            'w-full h-full object-contain rounded-full ring-1 ring-border transition-opacity duration-300 select-none',
-                            crossed ? 'opacity-40' : 'opacity-100'
-                          )}
-                        />
-                        {crossed && (
-                          <svg
-                            viewBox="0 0 100 100"
-                            className="pointer-events-none absolute inset-0 h-full w-full"
-                            aria-hidden="true"
-                          >
-                            <line
-                              x1="20" y1="20" x2="80" y2="80"
-                              stroke="rgb(239 68 68)" strokeWidth="12" strokeLinecap="round"
-                              className={cn(isAnimating && 'cross-stroke')}
-                            />
-                            <line
-                              x1="80" y1="20" x2="20" y2="80"
-                              stroke="rgb(239 68 68)" strokeWidth="12" strokeLinecap="round"
-                              className={cn(isAnimating && 'cross-stroke cross-stroke-2')}
-                            />
-                          </svg>
-                        )}
-                      </button>
-                      <span className="text-[8px] sm:text-[10px] md:text-xs font-medium text-muted-foreground text-center leading-tight truncate max-w-full">
-                        {it.i + 1}{it.name ? ` - ${it.name}` : ''}
-                      </span>
-
-                    </div>
-                  );
-                })}
               </div>
-            </div>
-          );
-        })()}
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSideAvatar = (player: 1 | 2) => {
+    return (
+      <div className="flex shrink-0 flex-col items-center gap-3 w-48">
+        {renderSideAvatarButton(player)}
+        {renderSideItems(player)}
       </div>
     );
   };
@@ -411,7 +425,17 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
   return (
     <div className="p-1 sm:p-2 md:p-3">
       <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-2 md:gap-5 lg:gap-8">
-        <div className="flex md:contents flex-row justify-between items-stretch gap-2">
+        <div className="flex md:hidden flex-col gap-1.5">
+          <div className="grid grid-cols-2 items-end justify-items-center gap-2">
+            {renderSideAvatarButton(1)}
+            {renderSideAvatarButton(2)}
+          </div>
+          <div className="flex justify-center items-start gap-2">
+            {renderSideItems(1, true)}
+            {renderSideItems(2, true)}
+          </div>
+        </div>
+        <div className="hidden md:contents">
           <div className="md:order-1 flex-1 md:flex-none flex justify-start md:justify-center">
             {renderSideAvatar(1)}
           </div>
