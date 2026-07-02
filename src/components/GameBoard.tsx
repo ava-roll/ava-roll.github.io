@@ -204,7 +204,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
       <div
         ref={(el) => (cellRefs.current[String(cellNumber)] = el)}
         className={cn(
-          'relative aspect-square rounded-lg border-2 border-border flex flex-col items-center justify-center text-center p-2 transition-all duration-300',
+          'relative aspect-square rounded-md md:rounded-lg border md:border-2 border-border flex flex-col items-center justify-center text-center p-0.5 sm:p-1 md:p-2 transition-all duration-300',
           getZoneClass(cellNumber),
           isShortcut && 'ring-2 ring-yellow-300/60',
           isFinish && 'ring-2 ring-amber-300',
