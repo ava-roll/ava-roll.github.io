@@ -239,7 +239,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
             title={`Ladder to cell ${shortcuts[cellNumber]}`}
           >
 
-            <ArrowUp className="h-3 w-3" strokeWidth={3} />
+            <ArrowUp className="h-2 w-2 md:h-3 md:w-3" strokeWidth={3} />
             {shortcuts[cellNumber]}
           </div>
         )}
