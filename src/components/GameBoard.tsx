@@ -356,14 +356,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
                   return (
                     <div
                       key={it.i}
-                      className={cn('flex flex-col items-center gap-0.5', lonely && 'col-span-2')}
+                      className={cn('flex flex-col items-center gap-0.5', lonely && 'md:col-span-2')}
                     >
                       <button
                         type="button"
                         onClick={() => onItemPreview?.(player, it.i, it.url, it.name)}
                         aria-label={`Preview item ${it.i + 1}${it.name ? ` - ${it.name}` : ''}`}
-                        className="relative w-10 sm:w-14 md:w-16 aspect-square cursor-pointer transition-transform hover:scale-110"
+                        className="relative w-full sm:w-12 md:w-16 aspect-square cursor-pointer transition-transform hover:scale-110"
                       >
+
                         <img
                           src={it.url}
                           alt={`Item ${it.i + 1}`}
