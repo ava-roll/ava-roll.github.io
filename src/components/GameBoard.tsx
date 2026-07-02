@@ -412,10 +412,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
     <div className="p-1 sm:p-2 md:p-3">
       <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-2 md:gap-5 lg:gap-8">
         <div className="flex md:contents flex-row justify-between items-stretch gap-2">
-          {renderSideAvatar(1)}
-          {renderSideAvatar(2)}
+          <div className="md:order-1 flex-1 md:flex-none flex justify-start md:justify-center">
+            {renderSideAvatar(1)}
+          </div>
+          <div className="md:order-3 flex-1 md:flex-none flex justify-end md:justify-center">
+            {renderSideAvatar(2)}
+          </div>
         </div>
-        <div ref={containerRef} className="relative w-full md:flex-1 min-w-0 md:order-none">
+        <div ref={containerRef} className="relative w-full md:flex-1 min-w-0 md:order-2">
+
         {/* Start gate (pre-board home) */}
         <div className="mb-2 md:mb-3 flex justify-center">
           <div className="relative">
