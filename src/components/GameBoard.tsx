@@ -204,7 +204,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
       <div
         ref={(el) => (cellRefs.current[String(cellNumber)] = el)}
         className={cn(
-          'relative aspect-square rounded-lg border-2 border-border flex flex-col items-center justify-center text-center p-2 transition-all duration-300',
+          'relative aspect-square rounded-md md:rounded-lg border md:border-2 border-border flex flex-col items-center justify-center text-center p-0.5 sm:p-1 md:p-2 transition-all duration-300',
           getZoneClass(cellNumber),
           isShortcut && 'ring-2 ring-yellow-300/60',
           isFinish && 'ring-2 ring-amber-300',
@@ -225,20 +225,21 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
           />
         )}
 
-        <div className="text-sm font-bold text-white mb-1 flex items-center gap-1">
-          {isFinish && <Flag className="h-3.5 w-3.5" fill="currentColor" />}
+        <div className="text-[10px] sm:text-xs md:text-sm font-bold text-white mb-0.5 md:mb-1 flex items-center gap-1">
+          {isFinish && <Flag className="h-2.5 w-2.5 md:h-3.5 md:w-3.5" fill="currentColor" />}
         </div>
 
-        <div className="text-sm font-bold text-white mb-1 flex items-center gap-1">
+        <div className="text-[10px] sm:text-xs md:text-sm font-bold text-white mb-0.5 md:mb-1 flex items-center gap-1">
           {cellNumber}
         </div>
 
         {isShortcut && (
           <div
-            className="absolute top-1 right-1 flex items-center gap-0.5 rounded-md bg-yellow-400/95 px-1 py-0.5 text-[10px] font-bold text-slate-900 shadow-md ring-1 ring-yellow-600/40"
+            className="absolute top-0.5 right-0.5 md:top-1 md:right-1 flex items-center gap-0.5 rounded md:rounded-md bg-yellow-400/95 px-0.5 py-0 md:px-1 md:py-0.5 text-[7px] sm:text-[9px] md:text-[10px] font-bold text-slate-900 shadow md:shadow-md ring-1 ring-yellow-600/40"
             title={`Ladder to cell ${shortcuts[cellNumber]}`}
           >
-            <ArrowUp className="h-3 w-3" strokeWidth={3} />
+
+            <ArrowUp className="h-2 w-2 md:h-3 md:w-3" strokeWidth={3} />
             {shortcuts[cellNumber]}
           </div>
         )}
@@ -246,7 +247,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
         {p1Activated && (
           <button
             onClick={(e) => { e.stopPropagation(); onReplayReward(cellNumber, 1); }}
-            className="absolute bottom-1 left-1/4 -translate-x-1/2 w-4 h-4 rounded-full bg-player-1 ring-1 ring-white/70 hover:scale-125 transition-transform z-20"
+            className="absolute bottom-0.5 md:bottom-1 left-1/4 -translate-x-1/2 w-2.5 h-2.5 md:w-4 md:h-4 rounded-full bg-player-1 ring-1 ring-white/70 hover:scale-125 transition-transform z-20"
             aria-label={`Replay Player 1 reward at cell ${cellNumber}`}
             title="Player 1 reward"
           />
@@ -254,7 +255,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
         {p2Activated && (
           <button
             onClick={(e) => { e.stopPropagation(); onReplayReward(cellNumber, 2); }}
-            className="absolute bottom-1 left-3/4 -translate-x-1/2 w-4 h-4 rounded-full bg-player-2 ring-1 ring-white/70 hover:scale-125 transition-transform z-20"
+            className="absolute bottom-0.5 md:bottom-1 left-3/4 -translate-x-1/2 w-2.5 h-2.5 md:w-4 md:h-4 rounded-full bg-player-2 ring-1 ring-white/70 hover:scale-125 transition-transform z-20"
             aria-label={`Replay Player 2 reward at cell ${cellNumber}`}
             title="Player 2 reward"
           />
@@ -314,7 +315,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
     const animating = crossAnim[player];
     const hasFaces = faces.some(f => f.url);
     return (
-      <div className="flex shrink-0 flex-col items-center gap-3 w-24 sm:w-36 md:w-48">
+      <div className="flex shrink-0 flex-row md:flex-col items-center gap-2 md:gap-3 w-full md:w-48 md:shrink-0">
+
         <button
           type="button"
           onClick={() => onAvatarPreview?.(player)}
@@ -328,9 +330,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
             src={img}
             alt={name}
             className={cn(
-              'w-24 sm:w-36 md:w-48 h-auto object-contain select-none',
+              'w-16 sm:w-28 md:w-48 h-auto object-contain select-none',
               anim > 0 && 'animate-avatar-swap'
             )}
+
           />
         </button>
 
@@ -339,12 +342,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
             .map((f, i) => ({ url: f.url, name: f.name, i }))
             .filter((it): it is { url: string; name: string | null; i: number } => Boolean(it.url));
           return (
-            <div className="flex flex-col items-center gap-1.5 w-full">
-              <span className="relative text-[11px] sm:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="flex flex-col items-center gap-1 md:gap-1.5 w-full flex-1 md:flex-none">
+              <span className="relative text-[10px] sm:text-xs md:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Items
                 <InfoBubble show={infoStep === 3} text={INFO_TEXT.items} />
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-5 md:grid-cols-2 gap-1 md:gap-2 w-full md:w-auto">
+
                 {items.map((it, idx) => {
                   const crossed = track[it.i] === 1;
                   const isAnimating = animating.includes(it.i);
@@ -353,14 +357,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
                   return (
                     <div
                       key={it.i}
-                      className={cn('flex flex-col items-center gap-0.5', lonely && 'col-span-2')}
+                      className={cn('flex flex-col items-center gap-0.5', lonely && 'md:col-span-2')}
                     >
                       <button
                         type="button"
                         onClick={() => onItemPreview?.(player, it.i, it.url, it.name)}
                         aria-label={`Preview item ${it.i + 1}${it.name ? ` - ${it.name}` : ''}`}
-                        className="relative w-10 sm:w-14 md:w-16 aspect-square cursor-pointer transition-transform hover:scale-110"
+                        className="relative w-full sm:w-12 md:w-16 aspect-square cursor-pointer transition-transform hover:scale-110"
                       >
+
                         <img
                           src={it.url}
                           alt={`Item ${it.i + 1}`}
@@ -388,9 +393,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
                           </svg>
                         )}
                       </button>
-                      <span className="text-[10px] sm:text-xs font-medium text-muted-foreground text-center leading-tight">
+                      <span className="text-[8px] sm:text-[10px] md:text-xs font-medium text-muted-foreground text-center leading-tight truncate max-w-full">
                         {it.i + 1}{it.name ? ` - ${it.name}` : ''}
                       </span>
+
                     </div>
                   );
                 })}
@@ -403,12 +409,20 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
   };
 
   return (
-    <div className="p-2 sm:p-3">
-      <div className="flex items-center justify-center gap-3 sm:gap-5 md:gap-8">
-        {renderSideAvatar(1)}
-        <div ref={containerRef} className="relative flex-1 min-w-0">
+    <div className="p-1 sm:p-2 md:p-3">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-2 md:gap-5 lg:gap-8">
+        <div className="flex md:contents flex-row justify-between items-stretch gap-2">
+          <div className="md:order-1 flex-1 md:flex-none flex justify-start md:justify-center">
+            {renderSideAvatar(1)}
+          </div>
+          <div className="md:order-3 flex-1 md:flex-none flex justify-end md:justify-center">
+            {renderSideAvatar(2)}
+          </div>
+        </div>
+        <div ref={containerRef} className="relative w-full md:flex-1 min-w-0 md:order-2">
+
         {/* Start gate (pre-board home) */}
-        <div className="mb-3 flex justify-center">
+        <div className="mb-2 md:mb-3 flex justify-center">
           <div className="relative">
             <InfoBubble show={infoStep === 2} text={INFO_TEXT.dice} />
           <button
@@ -419,26 +433,26 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
             aria-label={started ? 'Roll dice' : 'Start'}
             title={started ? 'Roll dice' : 'Start'}
             className={cn(
-              'relative h-24 w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center transition-all',
+              'relative h-16 w-32 sm:h-20 sm:w-40 md:h-24 md:w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center transition-all',
               rollDisabled
                 ? 'opacity-40 cursor-not-allowed'
                 : 'cursor-pointer hover:bg-emerald-500/20 hover:border-emerald-400 active:scale-95'
             )}
           >
-            <div className="flex flex-col items-center gap-1 text-xs font-semibold text-emerald-400">
+            <div className="flex flex-col items-center gap-0.5 md:gap-1 text-[10px] md:text-xs font-semibold text-emerald-400">
               {currentPlayerName && (
-                <span className="max-w-[8rem] truncate">{currentPlayerName}</span>
+                <span className="max-w-[7rem] md:max-w-[8rem] truncate">{currentPlayerName}</span>
               )}
-              <Dice6 className="h-6 w-6" />
+              <Dice6 className="h-4 w-4 md:h-6 md:w-6" />
               <span>{started ? 'ROLL DICE' : 'START'}</span>
             </div>
           </button>
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-1 sm:space-y-2 md:space-y-3">
           {LAYOUT.map((row, ri) => (
-            <div key={ri} className="grid grid-cols-8 gap-3">
+            <div key={ri} className="grid grid-cols-8 gap-1 sm:gap-2 md:gap-3">
               {row.map((slot, ci) => (
                 <React.Fragment key={ci}>{renderCell(slot)}</React.Fragment>
               ))}
@@ -450,8 +464,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
         {renderToken(1, p1Style, player1Image)}
         {renderToken(2, p2Style, player2Image)}
         </div>
-        {renderSideAvatar(2)}
       </div>
     </div>
   );
 };
+
