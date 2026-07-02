@@ -255,7 +255,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
         {p2Activated && (
           <button
             onClick={(e) => { e.stopPropagation(); onReplayReward(cellNumber, 2); }}
-            className="absolute bottom-1 left-3/4 -translate-x-1/2 w-4 h-4 rounded-full bg-player-2 ring-1 ring-white/70 hover:scale-125 transition-transform z-20"
+            className="absolute bottom-0.5 md:bottom-1 left-3/4 -translate-x-1/2 w-2.5 h-2.5 md:w-4 md:h-4 rounded-full bg-player-2 ring-1 ring-white/70 hover:scale-125 transition-transform z-20"
             aria-label={`Replay Player 2 reward at cell ${cellNumber}`}
             title="Player 2 reward"
           />
