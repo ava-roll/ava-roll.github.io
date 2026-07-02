@@ -392,9 +392,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
                           </svg>
                         )}
                       </button>
-                      <span className="text-[10px] sm:text-xs font-medium text-muted-foreground text-center leading-tight">
+                      <span className="text-[8px] sm:text-[10px] md:text-xs font-medium text-muted-foreground text-center leading-tight truncate max-w-full">
                         {it.i + 1}{it.name ? ` - ${it.name}` : ''}
                       </span>
+
                     </div>
                   );
                 })}
