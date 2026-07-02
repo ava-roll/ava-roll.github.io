@@ -314,7 +314,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
     const animating = crossAnim[player];
     const hasFaces = faces.some(f => f.url);
     return (
-      <div className="flex shrink-0 flex-col items-center gap-3 w-24 sm:w-36 md:w-48">
+      <div className="flex shrink-0 flex-row md:flex-col items-center gap-2 md:gap-3 w-full md:w-48 md:shrink-0">
+
         <button
           type="button"
           onClick={() => onAvatarPreview?.(player)}
