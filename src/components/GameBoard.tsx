@@ -409,12 +409,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
   };
 
   return (
-    <div className="p-2 sm:p-3">
-      <div className="flex items-center justify-center gap-3 sm:gap-5 md:gap-8">
-        {renderSideAvatar(1)}
-        <div ref={containerRef} className="relative flex-1 min-w-0">
+    <div className="p-1 sm:p-2 md:p-3">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-2 md:gap-5 lg:gap-8">
+        <div className="flex md:contents flex-row justify-between items-stretch gap-2">
+          {renderSideAvatar(1)}
+          {renderSideAvatar(2)}
+        </div>
+        <div ref={containerRef} className="relative w-full md:flex-1 min-w-0 md:order-none">
         {/* Start gate (pre-board home) */}
-        <div className="mb-3 flex justify-center">
+        <div className="mb-2 md:mb-3 flex justify-center">
           <div className="relative">
             <InfoBubble show={infoStep === 2} text={INFO_TEXT.dice} />
           <button
@@ -425,26 +428,26 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
             aria-label={started ? 'Roll dice' : 'Start'}
             title={started ? 'Roll dice' : 'Start'}
             className={cn(
-              'relative h-24 w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center transition-all',
+              'relative h-16 w-32 sm:h-20 sm:w-40 md:h-24 md:w-44 rounded-lg border-2 border-dashed border-emerald-400/60 bg-emerald-500/10 flex items-center justify-center transition-all',
               rollDisabled
                 ? 'opacity-40 cursor-not-allowed'
                 : 'cursor-pointer hover:bg-emerald-500/20 hover:border-emerald-400 active:scale-95'
             )}
           >
-            <div className="flex flex-col items-center gap-1 text-xs font-semibold text-emerald-400">
+            <div className="flex flex-col items-center gap-0.5 md:gap-1 text-[10px] md:text-xs font-semibold text-emerald-400">
               {currentPlayerName && (
-                <span className="max-w-[8rem] truncate">{currentPlayerName}</span>
+                <span className="max-w-[7rem] md:max-w-[8rem] truncate">{currentPlayerName}</span>
               )}
-              <Dice6 className="h-6 w-6" />
+              <Dice6 className="h-4 w-4 md:h-6 md:w-6" />
               <span>{started ? 'ROLL DICE' : 'START'}</span>
             </div>
           </button>
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-1 sm:space-y-2 md:space-y-3">
           {LAYOUT.map((row, ri) => (
-            <div key={ri} className="grid grid-cols-8 gap-3">
+            <div key={ri} className="grid grid-cols-8 gap-1 sm:gap-2 md:gap-3">
               {row.map((slot, ci) => (
                 <React.Fragment key={ci}>{renderCell(slot)}</React.Fragment>
               ))}
@@ -456,8 +459,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
         {renderToken(1, p1Style, player1Image)}
         {renderToken(2, p2Style, player2Image)}
         </div>
-        {renderSideAvatar(2)}
       </div>
     </div>
   );
 };
+
