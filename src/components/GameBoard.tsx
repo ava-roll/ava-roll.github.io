@@ -225,19 +225,20 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
           />
         )}
 
-        <div className="text-sm font-bold text-white mb-1 flex items-center gap-1">
-          {isFinish && <Flag className="h-3.5 w-3.5" fill="currentColor" />}
+        <div className="text-[10px] sm:text-xs md:text-sm font-bold text-white mb-0.5 md:mb-1 flex items-center gap-1">
+          {isFinish && <Flag className="h-2.5 w-2.5 md:h-3.5 md:w-3.5" fill="currentColor" />}
         </div>
 
-        <div className="text-sm font-bold text-white mb-1 flex items-center gap-1">
+        <div className="text-[10px] sm:text-xs md:text-sm font-bold text-white mb-0.5 md:mb-1 flex items-center gap-1">
           {cellNumber}
         </div>
 
         {isShortcut && (
           <div
-            className="absolute top-1 right-1 flex items-center gap-0.5 rounded-md bg-yellow-400/95 px-1 py-0.5 text-[10px] font-bold text-slate-900 shadow-md ring-1 ring-yellow-600/40"
+            className="absolute top-0.5 right-0.5 md:top-1 md:right-1 flex items-center gap-0.5 rounded md:rounded-md bg-yellow-400/95 px-0.5 py-0 md:px-1 md:py-0.5 text-[7px] sm:text-[9px] md:text-[10px] font-bold text-slate-900 shadow md:shadow-md ring-1 ring-yellow-600/40"
             title={`Ladder to cell ${shortcuts[cellNumber]}`}
           >
+
             <ArrowUp className="h-3 w-3" strokeWidth={3} />
             {shortcuts[cellNumber]}
           </div>
