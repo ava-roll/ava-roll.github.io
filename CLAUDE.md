@@ -23,7 +23,7 @@ Deploys to GitHub Pages. The `404.html` copy is what makes client-side routing w
 
 Stack: Vite + React 18 + TypeScript + shadcn-ui (Radix) + Tailwind. `@/` aliases `src/`. TS is loose (`strict: false`, `noImplicitAny: false`); eslint disables `no-unused-vars`.
 
-`src/components/ui/*` is the stock shadcn component library — generally don't edit it. The actual app is four components:
+`src/components/ui/*` is the stock shadcn component library— generally don't edit it. The actual app is four components:
 
 - **`BoardGame.tsx`** — the single source of truth. Holds the entire `GameState` (see the exported interface) plus all UI/modal state in one component, and owns every game action: `rollDice` → `confirmDice` → `movePlayer` → `revealGIF` → `nextTurn`. All other components are presentational and receive callbacks/props from here.
 - **`GameBoard.tsx`** — renders the board grid and absolutely-positioned player tokens. Token positions are computed from real DOM cell rects via refs + `useLayoutEffect` (not CSS grid math), so tokens animate smoothly between cells. The `LAYOUT` constant defines the snake order (rows alternate direction so consecutive cells are physically adjacent).
