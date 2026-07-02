@@ -329,9 +329,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
             src={img}
             alt={name}
             className={cn(
-              'w-24 sm:w-36 md:w-48 h-auto object-contain select-none',
+              'w-16 sm:w-28 md:w-48 h-auto object-contain select-none',
               anim > 0 && 'animate-avatar-swap'
             )}
+
           />
         </button>
 
