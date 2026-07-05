@@ -609,8 +609,9 @@ export const BoardGame: React.FC = () => {
     <div className="min-h-screen bg-background p-2 sm:p-3">
       <div className="max-w-[1700px] mx-auto">
         <div className="mb-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mb-2">
-            <div className="relative inline-flex items-center gap-2">
+          <div className="flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr] items-center gap-2 mb-2">
+            <div className="hidden sm:block" />
+            <div className="relative inline-flex items-center gap-2 justify-center">
               <h1 className="text-2xl sm:text-4xl font-bold text-foreground">
                 Board Game Adventure
               </h1>
@@ -621,6 +622,7 @@ export const BoardGame: React.FC = () => {
               href="https://www.buymeacoffee.com/lenny"
               target="_blank"
               rel="noopener noreferrer"
+              className="sm:justify-self-end"
             >
               <img
                 src="https://img.buymeacoffee.com/button-api/?text=Support&emoji=🥐&slug=lenny&button_colour=BD5FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00"
