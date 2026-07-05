@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Trophy, ImageIcon, Pencil, Check, ArrowUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { GameBoard, CROSS_ANIM_MS } from './GameBoard';
 import { ImageStack } from './ImageStack';
 import { useToast } from '@/hooks/use-toast';
@@ -12,46 +13,135 @@ import { isVideo } from '@/lib/media';
 import { cn } from '@/lib/utils';
 import { AvatarPicker, defaultAvatarFor, progressionImageFor, itemFor, boardAvatarUrl, type Avatar } from './AvatarPicker';
 import { WinSplash } from './WinSplash';
+import { RewardTimerControls } from './RewardTimerControls';
+import { RewardTimerOverlay } from './RewardTimerOverlay';
+import { RewardTimerProvider } from '@/contexts/RewardTimerContext';
 import { DisclaimerScreen, DISCLAIMER_STORAGE_KEY } from './DisclaimerScreen';
 import { InfoToggle, InfoBubble, INFO_TEXT } from './InfoBubbles';
 
 // Auto-load media per cell from src/assets/gifs/player{1,2}/cell{N}/*
 // Plus a default fallback per player at src/assets/gifs/player{1,2}/default.*
+// The AI toggle switches these rewards to player1-/player2- folders instead.
 // Drop a new file into a cell folder and it shows up automatically.
 const MEDIA_EXT = '{jpg,jpeg,png,gif,webp,mp4,webm,mov}';
+type MediaLoader = () => Promise<string>;
 
 const player1CellModules = import.meta.glob(
   '@/assets/gifs/player1/cell*/*.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
-  { eager: true, query: '?url', import: 'default' }
-) as Record<string, string>;
+  { query: '?url', import: 'default' }
+) as Record<string, MediaLoader>;
+
 const player2CellModules = import.meta.glob(
   '@/assets/gifs/player2/cell*/*.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
-  { eager: true, query: '?url', import: 'default' }
-) as Record<string, string>;
+  { query: '?url', import: 'default' }
+) as Record<string, MediaLoader>;
+
+const player1NonAiCellModules = import.meta.glob(
+  '@/assets/gifs/player1-/cell*/*.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
+  { query: '?url', import: 'default' }
+) as Record<string, MediaLoader>;
+
+const player2NonAiCellModules = import.meta.glob(
+  '@/assets/gifs/player2-/cell*/*.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
+  { query: '?url', import: 'default' }
+) as Record<string, MediaLoader>;
+
 const player1DefaultModules = import.meta.glob(
   '@/assets/gifs/player1/default.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
-  { eager: true, query: '?url', import: 'default' }
-) as Record<string, string>;
+  { query: '?url', import: 'default' }
+) as Record<string, MediaLoader>;
+
 const player2DefaultModules = import.meta.glob(
   '@/assets/gifs/player2/default.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
-  { eager: true, query: '?url', import: 'default' }
-) as Record<string, string>;
+  { query: '?url', import: 'default' }
+) as Record<string, MediaLoader>;
 
-const groupByCell = (modules: Record<string, string>): Record<number, string[]> => {
+const player1NonAiDefaultModules = import.meta.glob(
+  '@/assets/gifs/player1-/default.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
+  { query: '?url', import: 'default' }
+) as Record<string, MediaLoader>;
+
+const player2NonAiDefaultModules = import.meta.glob(
+  '@/assets/gifs/player2-/default.{jpg,jpeg,png,gif,webp,mp4,webm,mov}',
+  { query: '?url', import: 'default' }
+) as Record<string, MediaLoader>;
+
+const mediaCache = new Map<string, Promise<string>>();
+
+async function loadMedia(
+  modules: Record<string, MediaLoader>,
+  path: string
+) {
+  let promise = mediaCache.get(path);
+
+  if (!promise) {
+    const loader = modules[path];
+    if (!loader) {
+      throw new Error(`Missing media: ${path}`);
+    }
+
+    promise = loader();
+    mediaCache.set(path, promise);
+  }
+
+  return promise;
+}
+
+const groupByCell = (
+  modules: Record<string, MediaLoader>
+): Record<number, string[]> => {
   const out: Record<number, string[]> = {};
-  for (const [path, url] of Object.entries(modules)) {
+
+  for (const path of Object.keys(modules)) {
     const m = path.match(/\/cell(\d+)\//i);
     if (!m) continue;
+
     const n = parseInt(m[1], 10);
-    (out[n] ||= []).push(url);
+    (out[n] ||= []).push(path);
   }
+
   return out;
 };
 
+// A cell can have per-extra-step variant folders: cell{N}-0 .. cell{N}-5, where
+// the suffix is how many steps the dice roll overshot that cell by. (Used for the
+// last/finish cell, but works for any cell number.) These don't match the plain
+// /cellN/ regex above, so we group them separately, keyed by cell then by extra.
+const groupByCellVariant = (
+  modules: Record<string, MediaLoader>
+): Record<number, Record<number, string[]>> => {
+  const out: Record<number, Record<number, string[]>> = {};
+
+  for (const path of Object.keys(modules)) {
+    const m = path.match(/\/cell(\d+)-(\d+)\//i);
+    if (!m) continue;
+
+    const cell = parseInt(m[1], 10);
+    const extra = parseInt(m[2], 10);
+
+    ((out[cell] ||= {})[extra] ||= []).push(path);
+  }
+
+  return out;
+};
+
+const player1DefaultPath =Object.keys(player1DefaultModules)[0];
+const player2DefaultPath = Object.keys(player2DefaultModules)[0];
+const player1NonAiDefaultPath = Object.keys(player1NonAiDefaultModules)[0];
+const player2NonAiDefaultPath = Object.keys(player2NonAiDefaultModules)[0];
+
 const player1CellMap = groupByCell(player1CellModules);
 const player2CellMap = groupByCell(player2CellModules);
+const player1CellVariantMap = groupByCellVariant(player1CellModules);
+const player2CellVariantMap = groupByCellVariant(player2CellModules);
 const player1Default = Object.values(player1DefaultModules)[0] ?? '';
 const player2Default = Object.values(player2DefaultModules)[0] ?? '';
+const player1NonAiCellMap = groupByCell(player1NonAiCellModules);
+const player2NonAiCellMap = groupByCell(player2NonAiCellModules);
+const player1NonAiCellVariantMap = groupByCellVariant(player1NonAiCellModules);
+const player2NonAiCellVariantMap = groupByCellVariant(player2NonAiCellModules);
+const player1NonAiDefault = Object.values(player1NonAiDefaultModules)[0] ?? '';
+const player2NonAiDefault = Object.values(player2NonAiDefaultModules)[0] ?? '';
 
 // Game data structure
 const BOARD_SIZE = 32;
@@ -72,13 +162,119 @@ const REVEAL_GIF_DELAY = 500;
 const STEP_MS = 250;
 const PAUSE_MS = 600;
 
-const getMediaForCell = (player: 1 | 2, cellNumber: number): string[] => {
-  const map = player === 1 ? player1CellMap : player2CellMap;
-  const fallback = player === 1 ? player1Default : player2Default;
-  const files = map[cellNumber];
+async function getRandomMediaForCell(
+  player: 1 | 2,
+  cellNumber: number,
+  aiEnabled: boolean
+): Promise<string | null> {
+  const modules =
+    aiEnabled
+      ? player === 1
+        ? player1CellModules
+        : player2CellModules
+      : player === 1
+        ? player1NonAiCellModules
+        : player2NonAiCellModules;
+
+  const map =
+    aiEnabled
+      ? player === 1
+        ? player1CellMap
+        : player2CellMap
+      : player === 1
+        ? player1NonAiCellMap
+        : player2NonAiCellMap;
+
+  const defaultModules =
+    aiEnabled
+      ? player === 1
+        ? player1DefaultModules
+        : player2DefaultModules
+      : player === 1
+        ? player1NonAiDefaultModules
+        : player2NonAiDefaultModules;
+
+  const defaultPath =
+    aiEnabled
+      ? player === 1
+        ? player1DefaultPath
+        : player2DefaultPath
+      : player === 1
+        ? player1NonAiDefaultPath
+        : player2NonAiDefaultPath;
+
+  const paths = map[cellNumber];
+
+  if (paths?.length) {
+    const path =
+      paths[Math.floor(Math.random() * paths.length)];
+
+    return loadMedia(modules, path);
+  }
+
+  if (defaultPath) {
+    return loadMedia(defaultModules, defaultPath);
+  }
+
+  return null;
+}
+
+async function getRandomMediaForCellVariant(
+  player: 1 | 2,
+  cellNumber: number,
+  extraSteps: number,
+  aiEnabled: boolean
+): Promise<string | null> {
+  const variantMap =
+    aiEnabled
+      ? player === 1
+        ? player1CellVariantMap
+        : player2CellVariantMap
+      : player === 1
+        ? player1NonAiCellVariantMap
+        : player2NonAiCellVariantMap;
+
+  const modules =
+    aiEnabled
+      ? player === 1
+        ? player1CellModules
+        : player2CellModules
+      : player === 1
+        ? player1NonAiCellModules
+        : player2NonAiCellModules;
+
+  const paths =
+    variantMap[cellNumber]?.[extraSteps];
+
+  if (paths?.length) {
+    const path =
+      paths[Math.floor(Math.random() * paths.length)];
+
+    return loadMedia(modules, path);
+  }
+
+  return getRandomMediaForCell(
+    player,
+    cellNumber,
+    aiEnabled
+  );
+}
+
+// Reward media for landing on a cell, picked from its cell{N}-{extra} variant
+// folder for the number of extra steps the roll overshot by (0-5). Falls back to
+// the plain cell{N} folder (and then the per-player default) when that variant
+// folder is empty/missing.
+const getMediaForCellVariant = (player: 1 | 2, cellNumber: number, extraSteps: number, aiEnabled: boolean): string[] => {
+  const variantMap = aiEnabled
+    ? player === 1 ? player1CellVariantMap : player2CellVariantMap
+    : player === 1 ? player1NonAiCellVariantMap : player2NonAiCellVariantMap;
+  const files = variantMap[cellNumber]?.[extraSteps];
   if (files && files.length > 0) return files;
-  return fallback ? [fallback] : [];
+  return getMediaForCell(player, cellNumber, aiEnabled);
 };
+
+const rewardKey = (player: 1 | 2, cellNumber: number, aiEnabled: boolean) =>
+  `${player}_${cellNumber}_${aiEnabled ? 'ai' : 'manual'}`;
 
 export interface GameState {
   currentPlayer: 1 | 2;
@@ -90,8 +286,10 @@ export interface GameState {
   isRolling: boolean;
   isMoving: boolean;
   gameWinner: 1 | 2 | null;
-  player1Stack: Array<{ gif: string; cellNumber: number }>;
-  player2Stack: Array<{ gif: string; cellNumber: number }>;
+  // `label` overrides the displayed cell name (used for finish-cell variants,
+  // e.g. "32-2"); plain cells leave it undefined and fall back to cellNumber.
+  player1Stack: Array<{ gif: string; cellNumber: number; label?: string }>;
+  player2Stack: Array<{ gif: string; cellNumber: number; label?: string }>;
   revealedGIFs: { [key: string]: string };
   tokenScale: { 1: number; 2: number };
   // Per-player dice-tracking: 5-element array (faces 1-5), index (n-1) flips to
@@ -164,6 +362,7 @@ export const BoardGame: React.FC = () => {
   const [revealInfo, setRevealInfo] = useState<{ player: 1 | 2; cell: number | null; label?: string; isItem?: boolean } | null>(null);
   const [showImageStack, setShowImageStack] = useState<1 | 2 | null>(null);
   const [replayMode, setReplayMode] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(true);
   const [playerNames, setPlayerNames] = useState<{ 1: string; 2: string }>({ 1: defaultP1.name, 2: defaultP2.name });
   const [editingPlayer, setEditingPlayer] = useState<1 | 2 | null>(null);
   const [nameDraft, setNameDraft] = useState('');
@@ -183,8 +382,6 @@ export const BoardGame: React.FC = () => {
   const [diceFace, setDiceFace] = useState(1);
   const [diceSettled, setDiceSettled] = useState(false);
   const [pendingDice, setPendingDice] = useState<number | null>(null);
-
-  
 
   const rollDice = () => {
     if (gameState.isRolling || gameState.isMoving || gameState.gameWinner || gameState.isAnimatingCross) return;
@@ -307,7 +504,7 @@ export const BoardGame: React.FC = () => {
   // Show the "item collected" preview (player-colored circle) for a face.
   const showItemCollected = (player: 1 | 2, faceIndex: number, url: string, name: string | null) => {
     setCurrentGIF(url);
-    const label = `Item Nr ${faceIndex + 1}${name ? ` - ${name}` : ''} was collected`;
+    const label = `Take off your ${name ? `${name}` : 'item'}`;
     setRevealInfo({ player, cell: null, label, isItem: true });
     setReplayMode(true);
     setShowGIFModal(true);
@@ -324,7 +521,7 @@ export const BoardGame: React.FC = () => {
     setGameState(prev => ({ ...prev, isMoving: true, [nextField]: null }));
     sounds.move();
 
-    const finish = (landed: number) => {
+    const finish = (landed: number, extraSteps: number) => {
       const winner: 1 | 2 | null = landed >= BOARD_SIZE ? currentPlayer : null;
       const shortcut = !winner ? (SHORTCUTS[landed as keyof typeof SHORTCUTS] ?? null) : null;
       setTimeout(() => {
@@ -337,7 +534,13 @@ export const BoardGame: React.FC = () => {
       }, PAUSE_MS);
 
 
-      if (winner) { sounds.win(); return; }
+      if (winner) {
+        sounds.win();
+        // Reveal the finish reward from the cell32-{extraSteps} folder and add it
+        // to the stack, but defer the modal: the WinSplash's "Get Reward" replays it.
+        revealGIF(landed, currentPlayer, { extraSteps, deferModal: true });
+        return;
+      }
       revealGIF(landed, currentPlayer);
       if (shortcut !== null) {
         sounds.shortcut();
@@ -350,15 +553,17 @@ export const BoardGame: React.FC = () => {
 
     const startStepping = (from: number, count: number) => {
       const targetPos = Math.min(from + count, BOARD_SIZE);
+      // How many steps the roll overshot the finish cell by (0 when it doesn't reach).
+      const extraSteps = Math.max(0, from + count - BOARD_SIZE);
       const totalSteps = targetPos - from;
-      if (totalSteps <= 0) { finish(from); return; }
+      if (totalSteps <= 0) { finish(from, extraSteps); return; }
       let step = 0;
       const tick = () => {
         step++;
         const newPos = from + step;
         setGameState(prev => ({ ...prev, [posField]: newPos }));
         if (step < totalSteps) { setTimeout(tick, STEP_MS); return; }
-        finish(newPos);
+        finish(newPos, extraSteps);
       };
       setTimeout(tick, STEP_MS);
     };
@@ -385,36 +590,96 @@ export const BoardGame: React.FC = () => {
     }
   };
 
-  const revealGIF = (cellNumber: number, player: 1 | 2) => {
-    const key = `${player}_${cellNumber}`;
-    setGameState(prev => {
-      let gifUrl = prev.revealedGIFs[key];
+  const revealGIF = async (
+    cellNumber: number,
+    player: 1 | 2,
+    opts: { extraSteps?: number; deferModal?: boolean } = {}
+  ) => {
+    const { extraSteps, deferModal = false } = opts;
+
+    const useVariant = extraSteps != null;
+    const finishLabel = useVariant
+      ? `${cellNumber}-${extraSteps}`
+      : undefined;
+
+    const key = rewardKey(player, cellNumber, aiEnabled);
+
+    // first see if we already have the URL
+    const existing =
+      gameState.revealedGIFs[key];
+
+    let gifUrl = existing;
+
+    if (!gifUrl) {
+      gifUrl = useVariant
+        ? await getRandomMediaForCellVariant(
+            player,
+            cellNumber,
+            extraSteps!,
+           aiEnabled
+         )
+        : await getRandomMediaForCell(
+            player,
+            cellNumber,
+            aiEnabled
+          );
+
       if (!gifUrl) {
-        const gifs = getMediaForCell(player, cellNumber);
-        if (gifs.length === 0) return prev;
-        const randomIndex = Math.floor(Math.random() * gifs.length);
-        gifUrl = gifs[randomIndex];
+        return;
       }
-      const stack = player === 1 ? prev.player1Stack : prev.player2Stack;
-      const alreadyInStack = stack.some(item => item.cellNumber === cellNumber);
-      let newStack = stack;
-      if (!alreadyInStack) {
-        newStack = [...stack, { gif: gifUrl, cellNumber }];
-      }
-      const newState = {
+    }
+
+    setGameState(prev => {
+      const stack =
+        player === 1
+          ? prev.player1Stack
+          : prev.player2Stack;
+
+      const alreadyInStack =
+        stack.some(
+          item => item.cellNumber === cellNumber
+        );
+
+      const newStack = alreadyInStack
+        ? stack
+        : [
+           ...stack,
+           {
+              gif: gifUrl!,
+              cellNumber,
+              label: finishLabel,
+           },
+          ];
+
+      return {
         ...prev,
-        revealedGIFs: { ...prev.revealedGIFs, [key]: gifUrl },
-        [player === 1 ? 'player1Stack' : 'player2Stack']: newStack
+        revealedGIFs: {
+          ...prev.revealedGIFs,
+          [key]: gifUrl!,
+        },
+        [player === 1
+          ? 'player1Stack'
+          : 'player2Stack']: newStack,
       };
-      setCurrentGIF(gifUrl);
-      setReplayMode(false);
-      setRevealInfo({ player, cell: cellNumber });
+    });
+
+    setCurrentGIF(gifUrl);
+    setReplayMode(deferModal);
+
+    setRevealInfo({
+      player,
+      cell: cellNumber,
+      label: finishLabel
+        ? `${playerNames[player]} • Cell ${finishLabel}`
+        : undefined,
+   });
+
+    if (!deferModal) {
       setTimeout(() => {
         setShowGIFModal(true);
         sounds.reveal();
       }, REVEAL_GIF_DELAY);
-      return newState;
-    });
+    }
   };
 
   const previewAvatar = (player: 1 | 2) => {
@@ -435,12 +700,14 @@ export const BoardGame: React.FC = () => {
   };
 
   const replayReward = (cellNumber: number, player: 1 | 2) => {
-    const key = `${player}_${cellNumber}`;
+    const key = rewardKey(player, cellNumber, aiEnabled);
     const url = gameState.revealedGIFs[key];
     if (!url) return;
     sounds.click();
+    const stack = player === 1 ? gameState.player1Stack : gameState.player2Stack;
+    const item = stack.find(i => i.cellNumber === cellNumber);
     setCurrentGIF(url);
-    setRevealInfo({ player, cell: cellNumber });
+    setRevealInfo({ player, cell: cellNumber, label: item?.label ? `${playerNames[player]} • Cell ${item.label}` : undefined });
     setReplayMode(true);
     setShowGIFModal(true);
   };
@@ -457,7 +724,7 @@ export const BoardGame: React.FC = () => {
     const last = stack[stack.length - 1];
     if (!last) return;
     setCurrentGIF(last.gif);
-    setRevealInfo({ player: winner, cell: last.cellNumber });
+    setRevealInfo({ player: winner, cell: last.cellNumber, label: last.label ? `${playerNames[winner]} • Cell ${last.label}` : undefined });
     setReplayMode(true);
     setShowGIFModal(true);
   };
@@ -606,18 +873,30 @@ export const BoardGame: React.FC = () => {
   };
 
   return (
+    <RewardTimerProvider>
     <div className="min-h-screen bg-background p-2 sm:p-3">
+      <div className="fixed left-2 top-2 z-40 flex items-center gap-2 rounded-md border bg-card/95 px-2.5 py-2 shadow-md backdrop-blur">
+        <span className="text-xs font-bold uppercase tracking-wide text-foreground">AI</span>
+        <Switch
+          checked={aiEnabled}
+          onCheckedChange={(checked) => {
+            sounds.click();
+            setAiEnabled(checked);
+          }}
+          aria-label="Toggle AI rewards"
+        />
+      </div>
       <div className="max-w-[1700px] mx-auto">
         <div className="text-center mb-6">
           <div className="relative inline-flex items-center gap-2 mb-2">
             <h1 className="text-4xl font-bold text-foreground">
-              Board Game Adventure
+              Pose Game: Couples Adventure
             </h1>
             <InfoToggle active={infoStep > 0} onClick={() => { sounds.click(); setInfoStep(s => (s + 1) % 4); }} />
             <InfoBubble show={infoStep === 1} text={INFO_TEXT.game} below className="w-80" />
           </div>
           <p className="text-muted-foreground">
-            Roll the dice, collect GIFs, and race to the finish!
+            Roll the dice. Remove your layers. Discover new poses. Reach the finish. ⭐
           </p>
         </div>
 
@@ -710,9 +989,9 @@ export const BoardGame: React.FC = () => {
 
       {/* Reward Reveal Modal */}
       <Dialog open={showGIFModal} onOpenChange={(open) => { if (!open) handleRewardClose(); }}>
-        <DialogContent className="max-w-4xl w-[90vw] h-[90vh] p-2">
+        <DialogContent className="max-w-4xl w-[90vw] h-[90vh] p-2 flex flex-col">
           <div
-            className="relative h-full flex items-center justify-center"
+            className="relative flex-1 min-h-0 flex items-center justify-center"
             onClick={handleRewardClose}
           >
             {revealInfo && (
@@ -766,6 +1045,9 @@ export const BoardGame: React.FC = () => {
               )}
             </div>
           </div>
+          {(revealInfo?.cell !== null || revealInfo?.isItem) && (
+            <RewardTimerControls />
+          )}
         </DialogContent>
       </Dialog>
 
@@ -794,8 +1076,10 @@ export const BoardGame: React.FC = () => {
         <div className="fixed inset-0 z-50 cursor-wait" aria-hidden="true" />
       )}
 
+      <RewardTimerOverlay />
       {/* First-open disclaimer; acceptance is cached so it shows only once */}
       {!disclaimerAccepted && <DisclaimerScreen onAccept={acceptDisclaimer} />}
     </div>
+    </RewardTimerProvider>
   );
 };
