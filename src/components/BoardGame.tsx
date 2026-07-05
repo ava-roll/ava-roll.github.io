@@ -854,20 +854,20 @@ export const BoardGame: React.FC = () => {
       </div>
     );
   };
-
+            
   return (
     <div className="min-h-screen bg-background p-2 sm:p-3">
       <div className="max-w-[1700px] mx-auto">
         <div className="text-center mb-6">
           <div className="relative inline-flex items-center gap-2 mb-2">
             <h1 className="text-4xl font-bold text-foreground">
-              Pose Game: Couples Adventure
+              Board Game Adventure
             </h1>
             <InfoToggle active={infoStep > 0} onClick={() => { sounds.click(); setInfoStep(s => (s + 1) % 4); }} />
             <InfoBubble show={infoStep === 1} text={INFO_TEXT.game} below className="w-80" />
           </div>
           <p className="text-muted-foreground">
-            Roll the dice. Remove your layers. Discover new poses. Reach the finish. ⭐
+            Roll the dice, collect GIFs, and race to the finish! ⭐
           </p>
         </div>
 
