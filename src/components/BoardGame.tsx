@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Trophy, ImageIcon, Pencil, Check, ArrowUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { GameBoard, CROSS_ANIM_MS } from './GameBoard';
 import { ImageStack } from './ImageStack';
 import { useToast } from '@/hooks/use-toast';
@@ -13,9 +12,6 @@ import { isVideo } from '@/lib/media';
 import { cn } from '@/lib/utils';
 import { AvatarPicker, defaultAvatarFor, progressionImageFor, itemFor, boardAvatarUrl, type Avatar } from './AvatarPicker';
 import { WinSplash } from './WinSplash';
-import { RewardTimerControls } from './RewardTimerControls';
-import { RewardTimerOverlay } from './RewardTimerOverlay';
-import { RewardTimerProvider } from '@/contexts/RewardTimerContext';
 import { DisclaimerScreen, DISCLAIMER_STORAGE_KEY } from './DisclaimerScreen';
 import { InfoToggle, InfoBubble, INFO_TEXT } from './InfoBubbles';
 
@@ -259,19 +255,6 @@ async function getRandomMediaForCellVariant(
     aiEnabled
   );
 }
-
-// Reward media for landing on a cell, picked from its cell{N}-{extra} variant
-// folder for the number of extra steps the roll overshot by (0-5). Falls back to
-// the plain cell{N} folder (and then the per-player default) when that variant
-// folder is empty/missing.
-const getMediaForCellVariant = (player: 1 | 2, cellNumber: number, extraSteps: number, aiEnabled: boolean): string[] => {
-  const variantMap = aiEnabled
-    ? player === 1 ? player1CellVariantMap : player2CellVariantMap
-    : player === 1 ? player1NonAiCellVariantMap : player2NonAiCellVariantMap;
-  const files = variantMap[cellNumber]?.[extraSteps];
-  if (files && files.length > 0) return files;
-  return getMediaForCell(player, cellNumber, aiEnabled);
-};
 
 const rewardKey = (player: 1 | 2, cellNumber: number, aiEnabled: boolean) =>
   `${player}_${cellNumber}_${aiEnabled ? 'ai' : 'manual'}`;
@@ -873,19 +856,7 @@ export const BoardGame: React.FC = () => {
   };
 
   return (
-    <RewardTimerProvider>
     <div className="min-h-screen bg-background p-2 sm:p-3">
-      <div className="fixed left-2 top-2 z-40 flex items-center gap-2 rounded-md border bg-card/95 px-2.5 py-2 shadow-md backdrop-blur">
-        <span className="text-xs font-bold uppercase tracking-wide text-foreground">AI</span>
-        <Switch
-          checked={aiEnabled}
-          onCheckedChange={(checked) => {
-            sounds.click();
-            setAiEnabled(checked);
-          }}
-          aria-label="Toggle AI rewards"
-        />
-      </div>
       <div className="max-w-[1700px] mx-auto">
         <div className="text-center mb-6">
           <div className="relative inline-flex items-center gap-2 mb-2">
@@ -1045,9 +1016,6 @@ export const BoardGame: React.FC = () => {
               )}
             </div>
           </div>
-          {(revealInfo?.cell !== null || revealInfo?.isItem) && (
-            <RewardTimerControls />
-          )}
         </DialogContent>
       </Dialog>
 
@@ -1076,10 +1044,8 @@ export const BoardGame: React.FC = () => {
         <div className="fixed inset-0 z-50 cursor-wait" aria-hidden="true" />
       )}
 
-      <RewardTimerOverlay />
       {/* First-open disclaimer; acceptance is cached so it shows only once */}
       {!disclaimerAccepted && <DisclaimerScreen onAccept={acceptDisclaimer} />}
     </div>
-    </RewardTimerProvider>
   );
-};
+}
