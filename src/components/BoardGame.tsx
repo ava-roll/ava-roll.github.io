@@ -607,6 +607,18 @@ export const BoardGame: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background p-2 sm:p-3">
+      <a
+        href="https://www.buymeacoffee.com/lenny"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed top-2 right-2 z-50"
+      >
+        <img
+          src="https://img.buymeacoffee.com/button-api/?text=Support&emoji=🥐&slug=lenny&button_colour=BD5FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00"
+          alt="Support on Buy Me a Coffee"
+          className="h-8 sm:h-10 w-auto rounded-md"
+        />
+      </a>
       <div className="max-w-[1700px] mx-auto">
         <div className="text-center mb-6">
           <div className="relative inline-flex items-center gap-2 mb-2">
