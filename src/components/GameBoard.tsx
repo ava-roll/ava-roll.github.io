@@ -197,8 +197,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
     const arrowOnRight = row === 1 || row === 3;
     const showArrow = isCurrent && !gameState.isMoving;
 
-    const p1Activated = gameState.revealedGIFs[`1_${cellNumber}`] !== undefined;
-    const p2Activated = gameState.revealedGIFs[`2_${cellNumber}`] !== undefined;
+    const p1Activated = Object.keys(gameState.revealedGIFs).some(key => key === `1_${cellNumber}` || key.startsWith(`1_${cellNumber}_`));
+    const p2Activated = Object.keys(gameState.revealedGIFs).some(key => key === `2_${cellNumber}` || key.startsWith(`2_${cellNumber}_`));
 
     return (
       <div
