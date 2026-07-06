@@ -487,7 +487,7 @@ export const BoardGame: React.FC = () => {
   // Show the "item collected" preview (player-colored circle) for a face.
   const showItemCollected = (player: 1 | 2, faceIndex: number, url: string, name: string | null) => {
     setCurrentGIF(url);
-    const label = `Take off your ${name ? `${name}` : 'item'}`;
+    const label = `Collected Item: ${name ? `${name}` : 'item'}`;
     setRevealInfo({ player, cell: null, label, isItem: true });
     setReplayMode(true);
     setShowGIFModal(true);
