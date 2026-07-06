@@ -349,7 +349,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, shortcuts, info
         'flex flex-col items-center gap-1 md:gap-1.5 w-full md:flex-none',
         mobile ? 'max-w-[calc(50%_-_0.25rem)]' : 'flex-1'
       )}>
-        <span className="relative text-[10px] sm:text-xs md:text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="relative text-[10px] sm:text-xs md:text-sm font-semibold tracking-wide text-muted-foreground">
           Items
           <InfoBubble show={infoStep === 3} text={INFO_TEXT.items} />
         </span>
