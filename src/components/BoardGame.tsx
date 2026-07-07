@@ -691,7 +691,10 @@ export const BoardGame: React.FC = () => {
             </div>
           </Card>
         )}
+
+        <ContactForm />
       </div>
+
 
       {gameState.gameWinner && !splashDismissed && (
         <WinSplash
