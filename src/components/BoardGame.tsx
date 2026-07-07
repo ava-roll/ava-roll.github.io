@@ -14,6 +14,7 @@ import { AvatarPicker, defaultAvatarFor, progressionImageFor, itemFor, boardAvat
 import { WinSplash } from './WinSplash';
 import { DisclaimerScreen, DISCLAIMER_STORAGE_KEY } from './DisclaimerScreen';
 import { InfoToggle, InfoBubble, INFO_TEXT } from './InfoBubbles';
+import { ContactForm } from './ContactForm';
 
 // Auto-load media per cell from src/assets/gifs/player{1,2}/cell{N}/*
 // Plus a default fallback per player at src/assets/gifs/player{1,2}/default.*
