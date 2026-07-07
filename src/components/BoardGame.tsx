@@ -906,6 +906,12 @@ export const BoardGame: React.FC = () => {
           />
         </Card>
 
+        <div>
+          <div>
+            <a href="mailto:zizlak.moabit@gmail.com@gmail.com?body= Send from portfolio web site">Feedback © 2026 Ava-Roll</a>
+          </div>
+        </div>
+
         {gameState.gameWinner && (
           <Card className="p-6">
             <div className="flex flex-col items-center gap-4">
